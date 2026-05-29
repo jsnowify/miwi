@@ -1,50 +1,145 @@
-# Welcome to your Expo app 👋
+# Miwi — App Concept Document 🌿
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+> _A cozy, warm corner of the internet for you and your closest people._
 
-## Get started
+---
 
-1. Install dependencies
+## What is Miwi?
 
-   ```bash
-   npm install
-   ```
+Miwi is a private social mood-sharing app designed for small, close-knit circles of friends. Unlike big social media platforms built around followers, likes, and performance — Miwi is intimate. It's a soft, daily check-in with the people who actually matter to you. No pressure. No audience. Just vibes.
 
-2. Start the app
+The name Miwi feels warm, personal, and friendly — and that's exactly what the app is.
 
-   ```bash
-   npx expo start
-   ```
+---
 
-In the output, you'll find options to open the app in a
+## The Problem Miwi Solves
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+Big social apps (Instagram, TikTok, Twitter) are built for broadcasting. You perform for an audience. You curate. You compare. It's exhausting.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+Meanwhile, group chats get flooded and chaotic. There's no easy way to just softly say _"hey, I'm feeling cozy today"_ to the people you love without it getting buried.
 
-## Get a fresh project
+Miwi fills that gap — a calm, beautiful space to share your daily mood and small moments with a trusted few.
 
-When you're ready, run:
+---
 
-```bash
-npm run reset-project
-```
+## Target Users
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+- Friend groups of 3–10 people who want to stay emotionally connected
+- Couples wanting a shared daily ritual
+- Long-distance friends keeping in touch meaningfully
+- Anyone tired of performative social media
 
-## Learn more
+---
 
-To learn more about developing your project with Expo, look at the following resources:
+## Core Features
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### 1. Mood Posts
 
-## Join the community
+The heart of Miwi. Every post starts with a **vibe tag** — a mood emoji that sets the tone — followed by a short caption (max 280 characters). Keeps things light, honest, and low-pressure.
 
-Join our community of developers creating universal apps.
+Mood tags include:
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- 🌿 calm
+- 🔥 excited
+- 🌧️ low
+- 🌙 sleepy
+- ✨ grateful
+- 🫂 needing a hug
+- 🍃 at peace
+- 🌪️ overwhelmed
+- 😂 chaotic good
+
+### 2. The Circle Feed
+
+A cozy, scrollable home feed showing mood posts from your circle in real time. No algorithm — purely chronological. No ads. No strangers.
+
+### 3. Story Rings
+
+At the top of the feed, small avatar rings show who has posted today. Tap to see their full post. Missed a day? No judgment — rings just quietly go dark.
+
+### 4. Soft Reactions
+
+Instead of cold "like" counts, Miwi uses warm reactions:
+
+- 🤍 **Same** — I feel you
+- 🌸 **Thinking of you**
+- 🔥 **Let's go!**
+- 🫂 **Sending a hug**
+
+Reactions are private — only the poster sees who reacted.
+
+### 5. Share Controls
+
+Every post can be shared to:
+
+- **Your whole circle**
+- **Close friends** (a smaller sub-group)
+- **Just one person** (a soft, personal moment)
+
+### 6. Vibe Check Notifs
+
+Optional gentle daily nudge: _"How are you feeling today? ☁️"_ — not pushy, just a soft reminder to check in.
+
+### 7. Miwi Memories
+
+At the end of each month, Miwi quietly generates a little recap — your most used mood, a highlight moment from your circle, and a warm message. Like a tiny journal you didn't know you were keeping.
+
+### 8. Profile Page
+
+Simple and personal — your name, a short bio, your recent moods displayed as a soft grid, and a mood streak (how many days in a row you've shared something).
+
+### 9. Circles Management
+
+Create or join a circle. Each circle is invite-only via a simple link or code. You can be in multiple circles (e.g., one for your barkada, one for a long-distance friend group).
+
+---
+
+## What Miwi is NOT
+
+- Not a public social network
+- Not built around follower counts or metrics
+- Not designed to go viral
+- No ads, ever
+- No algorithm deciding what you see
+
+---
+
+## Design Language
+
+| Element       | Direction                            |
+| ------------- | ------------------------------------ |
+| Color palette | Warm terracotta, cream, soft blush   |
+| Typography    | Soft, rounded, friendly              |
+| Tone          | Cozy, calm, intimate                 |
+| Animations    | Gentle fades, no jarring transitions |
+| Icons         | Minimal, outline style               |
+
+---
+
+## Screens Overview
+
+1. **Home Feed** — Circle's mood posts, story rings, soft reactions
+2. **Post a Vibe** — Mood picker + caption + share controls
+3. **Profile** — Personal mood history, streak, bio
+4. **Notifications (Vibes)** — Who reacted, who posted, gentle nudges
+5. **Circle Settings** — Manage members, invite friends
+
+---
+
+## Monetization (Future)
+
+- **Miwi Plus** — Custom mood tags, themed circle backgrounds, memory archive, extended post history
+- No ads, ever — the intimacy of the app is the product
+
+---
+
+## Tagline Ideas
+
+- _"Your circle, your vibes."_
+- _"A soft space for the people who matter."_
+- _"Small circle. Big feelings."_
+- _"Just you and your people."_
+
+---
+
+_Made with love — and a little bit of a crush_ 🌸

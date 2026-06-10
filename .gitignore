@@ -25,3 +25,5 @@ database-documentation.txt
 *.njsproj
 *.sln
 *.sw?
+.env
+.gitignore

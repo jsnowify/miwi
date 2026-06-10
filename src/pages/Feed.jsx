@@ -1,162 +1,199 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import Navbar, { CirclesTopbarBtn } from "../components/Navbar";
+import ComposeSheet from "../components/ComposeSheet";
+import { MOCK_THREADS } from "../../data";
 
-const MOODS = [
-  { tag: "calm", emoji: "🌿" },
-  { tag: "excited", emoji: "🔥" },
-  { tag: "low", emoji: "🌧️" },
-  { tag: "sleepy", emoji: "🌙" },
-  { tag: "grateful", emoji: "✨" },
-  { tag: "needing a hug", emoji: "🫂" },
-  { tag: "at peace", emoji: "🍃" },
-  { tag: "overwhelmed", emoji: "🌪️" },
-  { tag: "chaotic good", emoji: "😂" },
-];
+/* ─── Story ring at the top of feed ────────────────────────── */
 
-const MOCK_POSTS = [
-  {
-    id: 1,
-    name: "sofía",
-    handle: "sofi",
-    avatar: "S",
-    avatarColor: "#C96A3A",
-    mood: "🌿",
-    moodLabel: "calm",
-    caption:
-      "made chamomile tea and watched the rain for an hour. honestly needed that.",
-    time: "2m ago",
-    reactions: [
-      { emoji: "🤍", label: "Same", count: 3 },
-      { emoji: "🌸", label: "Thinking of you", count: 1 },
-    ],
-  },
-  {
-    id: 2,
-    name: "marco",
-    handle: "marcooo",
-    avatar: "M",
-    avatarColor: "#8B5E3C",
-    mood: "🔥",
-    moodLabel: "excited",
-    caption: "got into the program!!!! cannot believe it's actually happening",
-    time: "14m ago",
-    reactions: [
-      { emoji: "🔥", label: "Let's go!", count: 5 },
-      { emoji: "🤍", label: "Same", count: 2 },
-    ],
-  },
-  {
-    id: 3,
-    name: "lea",
-    handle: "lealeale",
-    avatar: "L",
-    avatarColor: "#B07D62",
-    mood: "🌙",
-    moodLabel: "sleepy",
-    caption:
-      "three days in and still haven't unpacked. the suitcase is just a fixture now.",
-    time: "1h ago",
-    reactions: [{ emoji: "😂", label: "Same energy", count: 4 }],
-  },
-];
+function StoryRing({ post, hasNew }) {
+  return (
+    <div className="flex flex-col items-center gap-1.5 cursor-pointer flex-shrink-0">
+      <div
+        style={{
+          width: 52,
+          height: 52,
+          borderRadius: "50%",
+          padding: 2.5,
+          background: hasNew
+            ? "linear-gradient(135deg, #C96A3A, #E8B89A)"
+            : "transparent",
+          border: hasNew ? "none" : "2px solid #E8DDD5",
+        }}
+      >
+        <div
+          style={{
+            width: "100%",
+            height: "100%",
+            borderRadius: "50%",
+            background: post.avatarColor,
+            border: "2.5px solid #F9F4EF",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#F9F4EF",
+            fontSize: 16,
+            fontFamily: "'DM Serif Display', Georgia, serif",
+          }}
+        >
+          {post.avatar}
+        </div>
+      </div>
+      <span style={{ fontSize: 11, color: "#8A7060" }}>{post.handle}</span>
+    </div>
+  );
+}
 
-function ComposeSheet({ onClose, onPost }) {
-  const [caption, setCaption] = useState("");
-  const [selectedMood, setSelectedMood] = useState(null);
+/* ─── Single post inside a thread ──────────────────────────── */
 
-  function submit() {
-    if (!selectedMood) return;
-    onPost({ mood: selectedMood, caption });
-    onClose();
-  }
-
+function Post({ post, isLast }) {
   return (
     <div
-      className="fixed inset-0 flex items-end justify-center z-50"
-      style={{ background: "rgba(28, 20, 16, 0.4)" }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      style={{
+        display: "flex",
+        gap: 12,
+        alignItems: "flex-start",
+        position: "relative",
+        marginBottom: 8,
+      }}
     >
+      {/* Avatar column */}
       <div
-        className="w-full max-w-[600px] rounded-t-3xl p-6 pb-10"
-        style={{ background: "#FDFAF7", border: "1px solid #EDE3DA" }}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
       >
-        <div className="flex justify-between items-center mb-5">
-          <span
-            style={{
-              fontFamily: "'DM Serif Display', Georgia, serif",
-              fontSize: 18,
-              color: "#1C1410",
-            }}
-          >
-            How are you feeling?
-          </span>
-          <button
-            onClick={onClose}
-            className="text-lg"
-            style={{
-              background: "none",
-              border: "none",
-              color: "#8A7060",
-              cursor: "pointer",
-            }}
-          >
-            ✕
-          </button>
+        <div
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: "50%",
+            background: post.avatarColor,
+            border: "3px solid #F9F4EF",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#F9F4EF",
+            fontSize: 15,
+            flexShrink: 0,
+            zIndex: 1,
+            fontFamily: "'DM Serif Display', Georgia, serif",
+          }}
+        >
+          {post.avatar}
         </div>
+        {!isLast && (
+          <div
+            style={{
+              width: 2,
+              flex: 1,
+              marginTop: 4,
+              marginBottom: -8,
+              borderRadius: 2,
+              background: "#EDE3DA",
+            }}
+          />
+        )}
+      </div>
 
-        <div className="flex flex-wrap gap-2 mb-5">
-          {MOODS.map((m) => (
-            <button
-              key={m.tag}
-              onClick={() => setSelectedMood(m)}
-              className="px-4 py-2 rounded-full text-sm transition-all"
+      {/* Content column */}
+      <div style={{ flex: 1, minWidth: 0, paddingBottom: isLast ? 8 : 20 }}>
+        {/* Name + mood tag + time */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            flexWrap: "wrap",
+            marginBottom: 4,
+          }}
+        >
+          <span style={{ fontWeight: 600, fontSize: 14, color: "#1C1410" }}>
+            {post.name}
+          </span>
+          {post.mood && (
+            <span
               style={{
-                background: selectedMood?.tag === m.tag ? "#F9EDE3" : "#F5EDE3",
-                border:
-                  selectedMood?.tag === m.tag
-                    ? "1.5px solid #C96A3A"
-                    : "1.5px solid transparent",
-                color: "#5A3A28",
-                cursor: "pointer",
+                fontSize: 11,
+                padding: "2px 8px",
+                borderRadius: 999,
+                background: "#F0E5DB",
+                color: "#A05A3A",
               }}
             >
-              {m.emoji} {m.tag}
-            </button>
-          ))}
+              {post.mood} {post.moodLabel}
+            </span>
+          )}
+          <span style={{ fontSize: 12, color: "#B09A8A", marginLeft: "auto" }}>
+            {post.time}
+          </span>
         </div>
 
-        <textarea
-          value={caption}
-          onChange={(e) => setCaption(e.target.value)}
-          placeholder="add a caption… (optional)"
-          maxLength={280}
-          rows={3}
-          className="w-full px-4 py-3 rounded-xl text-sm border resize-none mb-4"
-          style={{
-            background: "#FFF8F3",
-            borderColor: "#E8D5C4",
-            color: "#1C1410",
-            outline: "none",
-            fontFamily: "inherit",
-          }}
-        />
-
-        <div className="flex justify-between items-center">
-          <span className="text-xs" style={{ color: "#B09A8A" }}>
-            {caption.length}/280
-          </span>
-          <button
-            onClick={submit}
-            disabled={!selectedMood}
-            className="px-7 py-2.5 rounded-full font-medium text-sm"
+        {/* Caption */}
+        {post.caption && (
+          <p
             style={{
-              background: selectedMood ? "#C96A3A" : "#E8D5C4",
-              color: selectedMood ? "#F9F4EF" : "#B09A8A",
-              border: "none",
-              cursor: selectedMood ? "pointer" : "not-allowed",
+              margin: 0,
+              fontSize: 14,
+              lineHeight: 1.6,
+              color: "#3D2B1F",
+              wordBreak: "break-word",
             }}
           >
-            Post
+            {post.caption}
+          </p>
+        )}
+
+        {/* Reactions + reply */}
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            marginTop: 12,
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
+        >
+          {post.reactions?.map((r) => (
+            <button
+              key={r.label}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                padding: "4px 12px",
+                borderRadius: 999,
+                border: "none",
+                background: "#F5EDE3",
+                color: "#8A7060",
+                cursor: "pointer",
+                fontSize: 13,
+              }}
+            >
+              {r.emoji} <span style={{ fontSize: 12 }}>{r.count}</span>
+            </button>
+          ))}
+          <button
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: "50%",
+              border: "none",
+              background: "transparent",
+              color: "#B09A8A",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#8A7060")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "#B09A8A")}
+          >
+            <i
+              className="ti ti-message-circle"
+              style={{ fontSize: 24, strokeWidth: 2.5 }}
+            />
           </button>
         </div>
       </div>
@@ -164,21 +201,326 @@ function ComposeSheet({ onClose, onPost }) {
   );
 }
 
+/* ─── Thread card ───────────────────────────────────────────── */
+
+function Thread({ thread, visible }) {
+  return (
+    <div
+      style={{
+        paddingBottom: 12,
+        borderBottom: "1px solid #EDE3DA",
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translateY(0)" : "translateY(10px)",
+        transition: "opacity 0.4s ease, transform 0.4s ease",
+      }}
+    >
+      {thread.map((post, i) => (
+        <Post key={post.id} post={post} isLast={i === thread.length - 1} />
+      ))}
+    </div>
+  );
+}
+
+/* ─── Mock Messages panel (desktop right side) ──────────────── */
+
+const MOCK_DMS = [
+  {
+    id: 1,
+    name: "sofía",
+    avatar: "S",
+    avatarColor: "#C96A3A",
+    preview: "omg same 🌿 i needed that too",
+    time: "2m",
+    unread: true,
+  },
+  {
+    id: 2,
+    name: "marco",
+    avatar: "M",
+    avatarColor: "#8B5E3C",
+    preview: "bro we need to celebrate!!!",
+    time: "15m",
+    unread: true,
+  },
+  {
+    id: 3,
+    name: "lea",
+    avatar: "L",
+    avatarColor: "#B07D62",
+    preview: "hahaha the suitcase is still there",
+    time: "1h",
+    unread: false,
+  },
+  {
+    id: 4,
+    name: "juno",
+    avatar: "J",
+    avatarColor: "#7A9E8A",
+    preview: "how are you feeling today?",
+    time: "3h",
+    unread: false,
+  },
+];
+
+function MessagesPanel() {
+  const [selectedDm, setSelectedDm] = useState(null);
+  const [isExpanded, setIsExpanded] = useState(true);
+
+  return (
+    <div
+      style={{
+        width: isExpanded ? 280 : 80,
+        height: "100vh",
+        position: "sticky",
+        top: 0,
+        background: "#F9F4EF",
+        borderLeft: "1px solid #EDE3DA",
+        display: "flex",
+        flexDirection: "column",
+        flexShrink: 0,
+        transition: "width 0.3s ease",
+        overflow: "hidden", // Clips interior elements flawlessly when shrunk
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          width: 280,
+          padding: "20px 21px 12px",
+          borderBottom: "1px solid #EDE3DA",
+          display: "flex",
+          alignItems: "center",
+          gap: 16,
+        }}
+      >
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          title={isExpanded ? "Collapse messages" : "Expand messages"}
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: "50%",
+            border: "none",
+            background: "transparent",
+            color: "#8A7060",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            transition: "background 0.2s",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "#F0E5DB")}
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.background = "transparent")
+          }
+        >
+          <i
+            className={`ti ${isExpanded ? "ti-chevron-right" : "ti-chevron-left"}`}
+            style={{ fontSize: 24, strokeWidth: 2.5 }}
+          />
+        </button>
+        <span
+          style={{
+            fontFamily: "'DM Serif Display', Georgia, serif",
+            fontSize: 18,
+            color: "#1C1410",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Messages
+        </span>
+      </div>
+
+      {/* DM list */}
+      <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
+        {MOCK_DMS.map((dm) => (
+          <button
+            key={dm.id}
+            onClick={() => setSelectedDm(dm.id === selectedDm ? null : dm.id)}
+            style={{
+              width: 280,
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              padding: "12px 21px",
+              background: selectedDm === dm.id ? "#F0E5DB" : "transparent",
+              border: "none",
+              borderBottom: "1px solid #F5EDE3",
+              cursor: "pointer",
+              textAlign: "left",
+              transition: "background 0.15s",
+            }}
+            onMouseEnter={(e) => {
+              if (selectedDm !== dm.id)
+                e.currentTarget.style.background = "#FAF3EC";
+            }}
+            onMouseLeave={(e) => {
+              if (selectedDm !== dm.id)
+                e.currentTarget.style.background = "transparent";
+            }}
+          >
+            {/* Avatar */}
+            <div
+              style={{
+                position: "relative",
+                flexShrink: 0,
+                width: 38,
+                height: 38,
+              }}
+            >
+              <div
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: "50%",
+                  background: dm.avatarColor,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#F9F4EF",
+                  fontSize: 14,
+                  fontFamily: "'DM Serif Display', Georgia, serif",
+                }}
+              >
+                {dm.avatar}
+              </div>
+              {dm.unread && (
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: 1,
+                    right: 1,
+                    width: 9,
+                    height: 9,
+                    borderRadius: "50%",
+                    background: "#C96A3A",
+                    border: "2px solid #F9F4EF",
+                  }}
+                />
+              )}
+            </div>
+
+            {/* Text */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 2,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: dm.unread ? 600 : 400,
+                    color: "#1C1410",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {dm.name}
+                </span>
+                <span style={{ fontSize: 11, color: "#B09A8A" }}>
+                  {dm.time}
+                </span>
+              </div>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 12,
+                  color: dm.unread ? "#5A3A28" : "#8A7060",
+                  fontWeight: dm.unread ? 500 : 400,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {dm.preview}
+              </p>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {/* New message button */}
+      <div
+        style={{
+          width: 280,
+          padding: "16px 21px",
+          borderTop: "1px solid #EDE3DA",
+        }}
+      >
+        <button
+          style={{
+            width: isExpanded ? 238 : 38,
+            height: 38,
+            borderRadius: isExpanded ? 999 : 14,
+            border: "none",
+            background: "#F0E5DB",
+            color: "#7A4A2A",
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            position: "relative",
+            transition: "all 0.3s ease",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "#E8D5C4")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "#F0E5DB")}
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            style={{ flexShrink: 0 }}
+          >
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          {isExpanded && (
+            <span style={{ marginLeft: 8, whiteSpace: "nowrap" }}>
+              New message
+            </span>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Feed page ─────────────────────────────────────────────── */
+
 export default function Feed() {
-  const [posts, setPosts] = useState(MOCK_POSTS);
+  const [threads, setThreads] = useState(MOCK_THREADS);
   const [composing, setComposing] = useState(false);
-  const [visiblePosts, setVisiblePosts] = useState(posts.map(() => false));
-  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState("home");
+  const [visible, setVisible] = useState(MOCK_THREADS.map(() => false));
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" ? window.innerWidth < 768 : false,
+  );
 
   useEffect(() => {
-    const timers = posts.map((_, i) =>
+    const handle = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handle);
+    return () => window.removeEventListener("resize", handle);
+  }, []);
+
+  useEffect(() => {
+    const timers = threads.map((_, i) =>
       setTimeout(
-        () =>
-          setVisiblePosts((prev) => {
+        () => {
+          setVisible((prev) => {
             const next = [...prev];
             next[i] = true;
             return next;
-          }),
+          });
+        },
         i * 120 + 200,
       ),
     );
@@ -198,17 +540,15 @@ export default function Feed() {
       time: "just now",
       reactions: [],
     };
-    setPosts([newPost, ...posts]);
-    setVisiblePosts([false, ...visiblePosts]);
-    setTimeout(
-      () =>
-        setVisiblePosts((prev) => {
-          const next = [...prev];
-          next[0] = true;
-          return next;
-        }),
-      50,
-    );
+    setThreads([[newPost], ...threads]);
+    setVisible([false, ...visible]);
+    setTimeout(() => {
+      setVisible((prev) => {
+        const next = [...prev];
+        next[0] = true;
+        return next;
+      });
+    }, 50);
   }
 
   return (
@@ -217,191 +557,122 @@ export default function Feed() {
         href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600&display=swap"
         rel="stylesheet"
       />
-      <div className="min-h-screen" style={{ background: "#F9F4EF" }}>
-        <div className="max-w-[600px] mx-auto">
-          {/* Header */}
+      <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css"
+      />
+
+      <div
+        style={{ minHeight: "100vh", display: "flex", background: "#F9F4EF" }}
+      >
+        {/* Left sidebar (desktop only — rendered by Navbar) */}
+        <Navbar
+          active={activeTab}
+          setActive={setActiveTab}
+          onCompose={() => setComposing(true)}
+        />
+
+        {/* Center content */}
+        <div
+          style={{ flex: 1, minWidth: 0, transition: "flex 0.3s ease" }}
+          className="md:ml-[80px] pb-[64px] md:pb-0"
+        >
           <div
-            className="flex justify-between items-center px-5 py-4 sticky top-0 z-10"
-            style={{ background: "#F9F4EF", borderBottom: "1px solid #EDE3DA" }}
+            style={{
+              maxWidth: 600,
+              margin: "0 auto",
+              minHeight: "100vh",
+              borderLeft: "1px solid #EDE3DA",
+              borderRight: "1px solid #EDE3DA",
+            }}
+            className="border-x-0 md:border-x"
           >
-            <span
+            {/* ── Mobile sticky topbar ── */}
+            <div
+              className="md:hidden sticky top-0 z-20 flex justify-between items-center px-4"
               style={{
-                fontFamily: "'DM Serif Display', Georgia, serif",
-                fontSize: 22,
-                color: "#1C1410",
+                height: 56,
+                background: "rgba(249,244,239,0.92)",
+                backdropFilter: "blur(12px)",
+                borderBottom: "1px solid #EDE3DA",
               }}
             >
-              miwi
-            </span>
-            <div className="flex gap-3 items-center">
-              <button
+              {/* Logo */}
+              <span
                 style={{
-                  background: "none",
-                  border: "none",
-                  fontSize: 20,
-                  cursor: "pointer",
-                }}
-              >
-                🔔
-              </button>
-              <button
-                onClick={() => navigate("/")}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-sm"
-                style={{
-                  background: "#C96A3A",
-                  color: "#F9F4EF",
                   fontFamily: "'DM Serif Display', Georgia, serif",
-                  border: "none",
-                  cursor: "pointer",
+                  fontSize: 22,
+                  color: "#1C1410",
                 }}
               >
-                Y
-              </button>
+                miwi
+              </span>
+
+              {/* Circles button — right side of topbar on mobile */}
+              <CirclesTopbarBtn
+                active={activeTab === "circles"}
+                onClick={() =>
+                  setActiveTab((t) => (t === "circles" ? "home" : "circles"))
+                }
+              />
             </div>
-          </div>
 
-          {/* Stories */}
-          <div
-            className="flex gap-4 px-5 py-4"
-            style={{
-              borderBottom: "1px solid #EDE3DA",
-              overflowX: "auto",
-              WebkitOverflowScrolling: "touch",
-            }}
-          >
-            {MOCK_POSTS.map((p, i) => (
-              <div
-                key={p.id}
-                className="flex flex-col items-center gap-1.5 cursor-pointer flex-shrink-0"
-              >
-                <div
-                  className="rounded-full p-[2.5px]"
-                  style={{
-                    width: 52,
-                    height: 52,
-                    background:
-                      i < 2
-                        ? "linear-gradient(135deg, #C96A3A, #E8B89A)"
-                        : "transparent",
-                    border: i >= 2 ? "2px solid #e8ddd5" : "none",
-                  }}
-                >
-                  <div
-                    className="w-full h-full rounded-full flex items-center justify-center text-[#F9F4EF] text-lg"
-                    style={{
-                      background: p.avatarColor,
-                      border: "2.5px solid #F9F4EF",
-                      fontFamily: "'DM Serif Display', Georgia, serif",
-                    }}
-                  >
-                    {p.avatar}
-                  </div>
-                </div>
-                <span className="text-[11px]" style={{ color: "#8A7060" }}>
-                  {p.handle}
-                </span>
-              </div>
-            ))}
-          </div>
+            {/* ── Desktop sticky header ── */}
+            <div
+              className="hidden md:flex sticky top-0 z-20 justify-center items-center"
+              style={{
+                height: 60,
+                background: "rgba(249,244,239,0.92)",
+                backdropFilter: "blur(12px)",
+              }}
+            >
+              <span style={{ fontWeight: 600, fontSize: 15, color: "#1C1410" }}>
+                For you
+              </span>
+            </div>
 
-          {/* Posts */}
-          <div className="px-5 pt-5 pb-28 flex flex-col gap-5">
-            {posts.map((post, i) => (
-              <div
-                key={post.id}
-                className="pb-5 border-b transition-all duration-500"
-                style={{
-                  borderColor: "#EDE3DA",
-                  opacity: visiblePosts[i] ? 1 : 0,
-                  transform: visiblePosts[i]
-                    ? "translateY(0)"
-                    : "translateY(10px)",
-                }}
-              >
-                <div className="flex gap-3 items-start">
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-[#F9F4EF] text-base flex-shrink-0"
-                    style={{
-                      background: post.avatarColor,
-                      fontFamily: "'DM Serif Display', Georgia, serif",
-                    }}
-                  >
-                    {post.avatar}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span
-                        className="font-semibold text-sm"
-                        style={{ color: "#1C1410" }}
-                      >
-                        {post.name}
-                      </span>
-                      <span
-                        className="text-[11px] px-2 py-0.5 rounded-full"
-                        style={{ background: "#F0E5DB", color: "#A05A3A" }}
-                      >
-                        {post.mood} {post.moodLabel}
-                      </span>
-                      <span
-                        className="text-xs ml-auto"
-                        style={{ color: "#B09A8A" }}
-                      >
-                        {post.time}
-                      </span>
-                    </div>
-                    {post.caption ? (
-                      <p
-                        className="text-sm leading-relaxed m-0 break-words"
-                        style={{ color: "#3D2B1F" }}
-                      >
-                        {post.caption}
-                      </p>
-                    ) : null}
-                    <div className="flex gap-2 mt-3 flex-wrap">
-                      {post.reactions.map((r) => (
-                        <button
-                          key={r.label}
-                          className="flex items-center gap-1 px-3 py-1 rounded-full text-sm"
-                          style={{
-                            background: "#F5EDE3",
-                            color: "#8A7060",
-                            border: "none",
-                            cursor: "pointer",
-                          }}
-                        >
-                          {r.emoji} <span className="text-xs">{r.count}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+            {/* Story rings */}
+            <div
+              style={{
+                display: "flex",
+                gap: 16,
+                padding: "16px 20px",
+                borderBottom: "1px solid #EDE3DA",
+                overflowX: "auto",
+                WebkitOverflowScrolling: "touch",
+              }}
+            >
+              {threads.map((thread, i) => (
+                <StoryRing
+                  key={`story-${thread[0].id}`}
+                  post={thread[0]}
+                  hasNew={i < 2}
+                />
+              ))}
+            </div>
 
-          {/* Compose FAB */}
-          <div
-            className="fixed bottom-0 left-0 right-0 px-5 pb-8 pt-3"
-            style={{
-              background: "linear-gradient(to top, #F9F4EF 60%, transparent)",
-            }}
-          >
-            <div className="max-w-[600px] mx-auto">
-              <button
-                onClick={() => setComposing(true)}
-                className="w-full py-3.5 rounded-full font-medium text-base"
-                style={{
-                  background: "#1C1410",
-                  color: "#F9F4EF",
-                  border: "none",
-                  cursor: "pointer",
-                }}
-              >
-                how are you feeling today?
-              </button>
+            {/* Threads feed */}
+            <div
+              style={{
+                padding: "20px 20px 40px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 20,
+              }}
+            >
+              {threads.map((thread, i) => (
+                <Thread
+                  key={`thread-${thread[0].id}`}
+                  thread={thread}
+                  visible={visible[i]}
+                />
+              ))}
             </div>
           </div>
         </div>
+
+        {/* ── Right panel: Messages (desktop only) ── */}
+        {!isMobile && <MessagesPanel />}
       </div>
 
       {composing && (

@@ -21,58 +21,44 @@ export default function Signup() {
 
   useEffect(() => {
     const username = form.username;
-
     if (!username) {
       setUsernameStatus(null);
       return;
     }
-
     if (!/^[a-z0-9_]{3,30}$/.test(username)) {
       setUsernameStatus("invalid");
       return;
     }
-
     setUsernameStatus("checking");
     clearTimeout(usernameDebounce.current);
-
     usernameDebounce.current = setTimeout(async () => {
       const { data } = await supabase
         .from("profiles")
         .select("id")
         .eq("username", username)
         .maybeSingle();
-
       setUsernameStatus(data ? "taken" : "available");
     }, 500);
-
     return () => clearTimeout(usernameDebounce.current);
   }, [form.username]);
 
   async function handleSignup(e) {
     e.preventDefault();
     setError("");
-
     if (usernameStatus !== "available") return;
-
     setLoading(true);
-
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
       options: {
-        data: {
-          full_name: form.displayName,
-          username: form.username,
-        },
+        data: { full_name: form.displayName, username: form.username },
       },
     });
-
     if (signUpError) {
       setError(signUpError.message);
       setLoading(false);
       return;
     }
-
     if (data.session) {
       navigate("/feed");
     } else {
@@ -96,15 +82,10 @@ export default function Signup() {
         href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600&display=swap"
         rel="stylesheet"
       />
-      <link
-        rel="stylesheet"
-        href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css"
-      />
       <div
         className="min-h-screen flex flex-col"
         style={{ background: "#F9F4EF", color: "#1C1410" }}
       >
-        {/* Nav */}
         <nav className="max-w-[420px] mx-auto w-full px-6 py-5 flex justify-between items-center">
           <Link
             to="/"
@@ -143,8 +124,35 @@ export default function Signup() {
             It's free, private, and yours.
           </p>
 
+          {/* Google first */}
+          <button
+            onClick={handleGoogle}
+            className="w-full py-3.5 rounded-full font-medium text-base flex items-center justify-center gap-3"
+            style={{
+              background: "#fff",
+              color: "#1C1410",
+              border: "1.5px solid #E8D5C4",
+              cursor: "pointer",
+            }}
+          >
+            <img
+              src="https://www.svgrepo.com/show/475656/google-color.svg"
+              width={20}
+              height={20}
+              alt=""
+            />
+            Continue with Google
+          </button>
+
+          <div className="flex items-center gap-3 my-6">
+            <div className="flex-1 h-px" style={{ background: "#EDE3DA" }} />
+            <span className="text-xs" style={{ color: "#B09A8A" }}>
+              or sign up with email
+            </span>
+            <div className="flex-1 h-px" style={{ background: "#EDE3DA" }} />
+          </div>
+
           <form onSubmit={handleSignup} className="flex flex-col gap-4">
-            {/* Display name */}
             <div>
               <label
                 className="block text-xs font-medium mb-1.5 tracking-widest uppercase"
@@ -168,7 +176,6 @@ export default function Signup() {
               />
             </div>
 
-            {/* Username — live validation */}
             <div>
               <label
                 className="block text-xs font-medium mb-1.5 tracking-widest uppercase"
@@ -223,17 +230,15 @@ export default function Signup() {
                       </span>
                     )}
                     {usernameStatus === "available" && (
-                      <i
-                        className="ti ti-circle-check-filled"
-                        style={{ color: "#6BAE8A", fontSize: "18px" }}
-                      />
+                      <span style={{ color: "#6BAE8A", fontSize: "18px" }}>
+                        ✓
+                      </span>
                     )}
                     {(usernameStatus === "taken" ||
                       usernameStatus === "invalid") && (
-                      <i
-                        className="ti ti-circle-x-filled"
-                        style={{ color: "#C96A3A", fontSize: "18px" }}
-                      />
+                      <span style={{ color: "#C96A3A", fontSize: "18px" }}>
+                        ✕
+                      </span>
                     )}
                   </span>
                 )}
@@ -261,7 +266,6 @@ export default function Signup() {
               )}
             </div>
 
-            {/* Email */}
             <div>
               <label
                 className="block text-xs font-medium mb-1.5 tracking-widest uppercase"
@@ -285,7 +289,6 @@ export default function Signup() {
               />
             </div>
 
-            {/* Password */}
             <div>
               <label
                 className="block text-xs font-medium mb-1.5 tracking-widest uppercase"
@@ -340,27 +343,6 @@ export default function Signup() {
               {loading ? "Creating account…" : "Create account 🌸"}
             </button>
           </form>
-
-          <div className="flex items-center gap-3 my-6">
-            <div className="flex-1 h-px" style={{ background: "#EDE3DA" }} />
-            <span className="text-xs" style={{ color: "#B09A8A" }}>
-              or
-            </span>
-            <div className="flex-1 h-px" style={{ background: "#EDE3DA" }} />
-          </div>
-
-          <button
-            onClick={handleGoogle}
-            className="w-full py-3.5 rounded-full font-medium text-base"
-            style={{
-              background: "#F0E5DB",
-              color: "#7A4A2A",
-              border: "none",
-              cursor: "pointer",
-            }}
-          >
-            Continue with Google
-          </button>
 
           <p
             className="text-center text-xs mt-5 leading-relaxed"

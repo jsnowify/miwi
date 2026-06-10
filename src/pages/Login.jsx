@@ -80,6 +80,34 @@ export default function Login() {
             Pick up where you left off with your circle.
           </p>
 
+          {/* Google first */}
+          <button
+            onClick={handleGoogle}
+            className="w-full py-3.5 rounded-full font-medium text-base flex items-center justify-center gap-3"
+            style={{
+              background: "#fff",
+              color: "#1C1410",
+              border: "1.5px solid #E8D5C4",
+              cursor: "pointer",
+            }}
+          >
+            <img
+              src="https://www.svgrepo.com/show/475656/google-color.svg"
+              width={20}
+              height={20}
+              alt=""
+            />
+            Continue with Google
+          </button>
+
+          <div className="flex items-center gap-3 my-6">
+            <div className="flex-1 h-px" style={{ background: "#EDE3DA" }} />
+            <span className="text-xs" style={{ color: "#B09A8A" }}>
+              or log in with email
+            </span>
+            <div className="flex-1 h-px" style={{ background: "#EDE3DA" }} />
+          </div>
+
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
             <div>
               <label
@@ -167,27 +195,6 @@ export default function Login() {
           >
             Forgot password?
           </p>
-
-          <div className="flex items-center gap-3 my-6">
-            <div className="flex-1 h-px" style={{ background: "#EDE3DA" }} />
-            <span className="text-xs" style={{ color: "#B09A8A" }}>
-              or
-            </span>
-            <div className="flex-1 h-px" style={{ background: "#EDE3DA" }} />
-          </div>
-
-          <button
-            onClick={handleGoogle}
-            className="w-full py-3.5 rounded-full font-medium text-base"
-            style={{
-              background: "#F0E5DB",
-              color: "#7A4A2A",
-              border: "none",
-              cursor: "pointer",
-            }}
-          >
-            Continue with Google
-          </button>
 
           <p className="text-center text-sm mt-6" style={{ color: "#8A7060" }}>
             New here?{" "}

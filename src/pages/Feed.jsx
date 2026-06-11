@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar, { CirclesTopbarBtn } from "../components/Navbar";
 import ComposeSheet from "../components/ComposeSheet";
+import MessagesPanel from "../components/MessagesPanel";
 import { MOCK_THREADS } from "../../data";
 
-/* ─── Story ring at the top of feed ────────────────────────── */
+/* ─── Story ring ────────────────────────────────────────────── */
 
 function StoryRing({ post, hasNew }) {
   return (
@@ -43,7 +45,7 @@ function StoryRing({ post, hasNew }) {
   );
 }
 
-/* ─── Single post inside a thread ──────────────────────────── */
+/* ─── Single post ───────────────────────────────────────────── */
 
 function Post({ post, isLast }) {
   return (
@@ -56,7 +58,6 @@ function Post({ post, isLast }) {
         marginBottom: 8,
       }}
     >
-      {/* Avatar column */}
       <div
         style={{
           display: "flex",
@@ -97,9 +98,7 @@ function Post({ post, isLast }) {
         )}
       </div>
 
-      {/* Content column */}
       <div style={{ flex: 1, minWidth: 0, paddingBottom: isLast ? 8 : 20 }}>
-        {/* Name + mood tag + time */}
         <div
           style={{
             display: "flex",
@@ -130,7 +129,6 @@ function Post({ post, isLast }) {
           </span>
         </div>
 
-        {/* Caption */}
         {post.caption && (
           <p
             style={{
@@ -145,7 +143,6 @@ function Post({ post, isLast }) {
           </p>
         )}
 
-        {/* Reactions + reply */}
         <div
           style={{
             display: "flex",
@@ -221,282 +218,10 @@ function Thread({ thread, visible }) {
   );
 }
 
-/* ─── Mock Messages panel (desktop right side) ──────────────── */
-
-const MOCK_DMS = [
-  {
-    id: 1,
-    name: "sofía",
-    avatar: "S",
-    avatarColor: "#C96A3A",
-    preview: "omg same 🌿 i needed that too",
-    time: "2m",
-    unread: true,
-  },
-  {
-    id: 2,
-    name: "marco",
-    avatar: "M",
-    avatarColor: "#8B5E3C",
-    preview: "bro we need to celebrate!!!",
-    time: "15m",
-    unread: true,
-  },
-  {
-    id: 3,
-    name: "lea",
-    avatar: "L",
-    avatarColor: "#B07D62",
-    preview: "hahaha the suitcase is still there",
-    time: "1h",
-    unread: false,
-  },
-  {
-    id: 4,
-    name: "juno",
-    avatar: "J",
-    avatarColor: "#7A9E8A",
-    preview: "how are you feeling today?",
-    time: "3h",
-    unread: false,
-  },
-];
-
-function MessagesPanel() {
-  const [selectedDm, setSelectedDm] = useState(null);
-  const [isExpanded, setIsExpanded] = useState(true);
-
-  return (
-    <div
-      style={{
-        width: isExpanded ? 280 : 80,
-        height: "100vh",
-        position: "sticky",
-        top: 0,
-        background: "#F9F4EF",
-        borderLeft: "1px solid #EDE3DA",
-        display: "flex",
-        flexDirection: "column",
-        flexShrink: 0,
-        transition: "width 0.3s ease",
-        overflow: "hidden", // Clips interior elements flawlessly when shrunk
-      }}
-    >
-      {/* Header */}
-      <div
-        style={{
-          width: 280,
-          padding: "20px 21px 12px",
-          borderBottom: "1px solid #EDE3DA",
-          display: "flex",
-          alignItems: "center",
-          gap: 16,
-        }}
-      >
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          title={isExpanded ? "Collapse messages" : "Expand messages"}
-          style={{
-            width: 38,
-            height: 38,
-            borderRadius: "50%",
-            border: "none",
-            background: "transparent",
-            color: "#8A7060",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-            transition: "background 0.2s",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "#F0E5DB")}
-          onMouseLeave={(e) =>
-            (e.currentTarget.style.background = "transparent")
-          }
-        >
-          <i
-            className={`ti ${isExpanded ? "ti-chevron-right" : "ti-chevron-left"}`}
-            style={{ fontSize: 24, strokeWidth: 2.5 }}
-          />
-        </button>
-        <span
-          style={{
-            fontFamily: "'DM Serif Display', Georgia, serif",
-            fontSize: 18,
-            color: "#1C1410",
-            whiteSpace: "nowrap",
-          }}
-        >
-          Messages
-        </span>
-      </div>
-
-      {/* DM list */}
-      <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
-        {MOCK_DMS.map((dm) => (
-          <button
-            key={dm.id}
-            onClick={() => setSelectedDm(dm.id === selectedDm ? null : dm.id)}
-            style={{
-              width: 280,
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              padding: "12px 21px",
-              background: selectedDm === dm.id ? "#F0E5DB" : "transparent",
-              border: "none",
-              borderBottom: "1px solid #F5EDE3",
-              cursor: "pointer",
-              textAlign: "left",
-              transition: "background 0.15s",
-            }}
-            onMouseEnter={(e) => {
-              if (selectedDm !== dm.id)
-                e.currentTarget.style.background = "#FAF3EC";
-            }}
-            onMouseLeave={(e) => {
-              if (selectedDm !== dm.id)
-                e.currentTarget.style.background = "transparent";
-            }}
-          >
-            {/* Avatar */}
-            <div
-              style={{
-                position: "relative",
-                flexShrink: 0,
-                width: 38,
-                height: 38,
-              }}
-            >
-              <div
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  borderRadius: "50%",
-                  background: dm.avatarColor,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#F9F4EF",
-                  fontSize: 14,
-                  fontFamily: "'DM Serif Display', Georgia, serif",
-                }}
-              >
-                {dm.avatar}
-              </div>
-              {dm.unread && (
-                <div
-                  style={{
-                    position: "absolute",
-                    bottom: 1,
-                    right: 1,
-                    width: 9,
-                    height: 9,
-                    borderRadius: "50%",
-                    background: "#C96A3A",
-                    border: "2px solid #F9F4EF",
-                  }}
-                />
-              )}
-            </div>
-
-            {/* Text */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: 2,
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: 13,
-                    fontWeight: dm.unread ? 600 : 400,
-                    color: "#1C1410",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {dm.name}
-                </span>
-                <span style={{ fontSize: 11, color: "#B09A8A" }}>
-                  {dm.time}
-                </span>
-              </div>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 12,
-                  color: dm.unread ? "#5A3A28" : "#8A7060",
-                  fontWeight: dm.unread ? 500 : 400,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {dm.preview}
-              </p>
-            </div>
-          </button>
-        ))}
-      </div>
-
-      {/* New message button */}
-      <div
-        style={{
-          width: 280,
-          padding: "16px 21px",
-          borderTop: "1px solid #EDE3DA",
-        }}
-      >
-        <button
-          style={{
-            width: isExpanded ? 238 : 38,
-            height: 38,
-            borderRadius: isExpanded ? 999 : 14,
-            border: "none",
-            background: "#F0E5DB",
-            color: "#7A4A2A",
-            fontSize: 14,
-            fontWeight: 600,
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            position: "relative",
-            transition: "all 0.3s ease",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "#E8D5C4")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "#F0E5DB")}
-        >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            style={{ flexShrink: 0 }}
-          >
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-          {isExpanded && (
-            <span style={{ marginLeft: 8, whiteSpace: "nowrap" }}>
-              New message
-            </span>
-          )}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 /* ─── Feed page ─────────────────────────────────────────────── */
 
 export default function Feed() {
+  const navigate = useNavigate();
   const [threads, setThreads] = useState(MOCK_THREADS);
   const [composing, setComposing] = useState(false);
   const [activeTab, setActiveTab] = useState("home");
@@ -565,14 +290,14 @@ export default function Feed() {
       <div
         style={{ minHeight: "100vh", display: "flex", background: "#F9F4EF" }}
       >
-        {/* Left sidebar (desktop only — rendered by Navbar) */}
+        {/* Left sidebar nav */}
         <Navbar
           active={activeTab}
           setActive={setActiveTab}
           onCompose={() => setComposing(true)}
         />
 
-        {/* Center content */}
+        {/* Center feed */}
         <div
           style={{ flex: 1, minWidth: 0, transition: "flex 0.3s ease" }}
           className="md:ml-[80px] pb-[64px] md:pb-0"
@@ -587,7 +312,7 @@ export default function Feed() {
             }}
             className="border-x-0 md:border-x"
           >
-            {/* ── Mobile sticky topbar ── */}
+            {/* Mobile topbar */}
             <div
               className="md:hidden sticky top-0 z-20 flex justify-between items-center px-4"
               style={{
@@ -597,7 +322,6 @@ export default function Feed() {
                 borderBottom: "1px solid #EDE3DA",
               }}
             >
-              {/* Logo */}
               <span
                 style={{
                   fontFamily: "'DM Serif Display', Georgia, serif",
@@ -607,17 +331,16 @@ export default function Feed() {
               >
                 miwi
               </span>
-
-              {/* Circles button — right side of topbar on mobile */}
               <CirclesTopbarBtn
                 active={activeTab === "circles"}
-                onClick={() =>
-                  setActiveTab((t) => (t === "circles" ? "home" : "circles"))
-                }
+                onClick={() => {
+                  setActiveTab("circles");
+                  navigate("/circles");
+                }}
               />
             </div>
 
-            {/* ── Desktop sticky header ── */}
+            {/* Desktop header */}
             <div
               className="hidden md:flex sticky top-0 z-20 justify-center items-center"
               style={{
@@ -651,7 +374,7 @@ export default function Feed() {
               ))}
             </div>
 
-            {/* Threads feed */}
+            {/* Threads */}
             <div
               style={{
                 padding: "20px 20px 40px",
@@ -671,8 +394,8 @@ export default function Feed() {
           </div>
         </div>
 
-        {/* ── Right panel: Messages (desktop only) ── */}
-        {!isMobile && <MessagesPanel />}
+        {/* Right messages sidebar — desktop only */}
+        {!isMobile && <MessagesPanel variant="sidebar" />}
       </div>
 
       {composing && (

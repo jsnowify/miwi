@@ -1,0 +1,660 @@
+import { useState } from "react";
+
+export const MOCK_DMS = [
+  {
+    id: 1,
+    name: "sofía",
+    avatar: "S",
+    avatarColor: "#C96A3A",
+    preview: "omg same 🌿 i needed that too",
+    time: "2m",
+    unread: 2,
+  },
+  {
+    id: 2,
+    name: "marco",
+    avatar: "M",
+    avatarColor: "#8B5E3C",
+    preview: "bro we need to celebrate!!!",
+    time: "15m",
+    unread: 1,
+  },
+  {
+    id: 3,
+    name: "lea",
+    avatar: "L",
+    avatarColor: "#B07D62",
+    preview: "hahaha the suitcase is still there",
+    time: "1h",
+    unread: 0,
+  },
+  {
+    id: 4,
+    name: "juno",
+    avatar: "J",
+    avatarColor: "#7A9E8A",
+    preview: "how are you feeling today?",
+    time: "3h",
+    unread: 0,
+  },
+];
+
+export const MOCK_GROUPS = [
+  {
+    id: 101,
+    name: "Barkada 🔥",
+    avatar: "B",
+    avatarColor: "#7A4A2A",
+    preview: "marco: let's go out tmrw",
+    time: "5m",
+    unread: 4,
+  },
+  {
+    id: 102,
+    name: "Long-distance 🍃",
+    avatar: "L",
+    avatarColor: "#4A7A6A",
+    preview: "alex: it's raining here too 🌧️",
+    time: "1h",
+    unread: 1,
+  },
+  {
+    id: 103,
+    name: "Just us two 🌙",
+    avatar: "J",
+    avatarColor: "#6A5A9A",
+    preview: "theo: goodnight 🌙",
+    time: "4h",
+    unread: 0,
+  },
+];
+
+/* ── Avatar ── */
+function Avatar({ label, color, size = 44, rounded = false }) {
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: rounded ? 14 : "50%",
+        background: color,
+        flexShrink: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "#F9F4EF",
+        fontSize: size * 0.36,
+        fontFamily: "'DM Serif Display', Georgia, serif",
+      }}
+    >
+      {label}
+    </div>
+  );
+}
+
+/* ── Unread badge ── */
+function Badge({ count }) {
+  if (!count) return null;
+  return (
+    <div
+      style={{
+        background: "#C96A3A",
+        color: "#F9F4EF",
+        fontSize: 11,
+        fontWeight: 700,
+        minWidth: 19,
+        height: 19,
+        borderRadius: 999,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "0 5px",
+        flexShrink: 0,
+      }}
+    >
+      {count}
+    </div>
+  );
+}
+
+/* ── Conversation row ── */
+function ConvoRow({ item, selected, onClick, rounded = false }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        width: "100%",
+        display: "flex",
+        alignItems: "center",
+        gap: 13,
+        padding: "12px 20px",
+        background: selected ? "#F0E5DB" : "transparent",
+        border: "none",
+        borderBottom: "1px solid #F5EDE3",
+        cursor: "pointer",
+        textAlign: "left",
+        transition: "background 0.15s",
+      }}
+      onMouseEnter={(e) => {
+        if (!selected) e.currentTarget.style.background = "#FAF3EC";
+      }}
+      onMouseLeave={(e) => {
+        if (!selected) e.currentTarget.style.background = "transparent";
+      }}
+    >
+      <div style={{ position: "relative", flexShrink: 0 }}>
+        <Avatar
+          label={item.avatar}
+          color={item.avatarColor}
+          rounded={rounded}
+        />
+        {item.unread > 0 && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: 0,
+              right: 0,
+              width: 11,
+              height: 11,
+              borderRadius: "50%",
+              background: "#C96A3A",
+              border: "2.5px solid #F9F4EF",
+            }}
+          />
+        )}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 3,
+          }}
+        >
+          <span
+            style={{
+              fontSize: 14,
+              fontWeight: item.unread > 0 ? 600 : 400,
+              color: "#1C1410",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              maxWidth: "60%",
+            }}
+          >
+            {item.name}
+          </span>
+          <span style={{ fontSize: 11, color: "#B09A8A", flexShrink: 0 }}>
+            {item.time}
+          </span>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 8,
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontSize: 13,
+              color: item.unread > 0 ? "#5A3A28" : "#8A7060",
+              fontWeight: item.unread > 0 ? 500 : 400,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              flex: 1,
+            }}
+          >
+            {item.preview}
+          </p>
+          <Badge count={item.unread} />
+        </div>
+      </div>
+    </button>
+  );
+}
+
+/* ── Search bar ── */
+function SearchBar({ value, onChange }) {
+  return (
+    <div
+      style={{
+        padding: "10px 16px",
+        borderBottom: "1px solid #EDE3DA",
+        background: "#F9F4EF",
+        flexShrink: 0,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          background: "#EDE3DA",
+          borderRadius: 12,
+          padding: "9px 14px",
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <circle
+            cx="11"
+            cy="11"
+            r="7.5"
+            stroke="#B09A8A"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+          <path
+            d="M16.5 16.5L21 21"
+            stroke="#B09A8A"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+        </svg>
+        <input
+          type="text"
+          placeholder="Search messages…"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          style={{
+            flex: 1,
+            border: "none",
+            background: "transparent",
+            fontSize: 14,
+            color: "#1C1410",
+            outline: "none",
+            fontFamily: "'Inter', sans-serif",
+          }}
+        />
+        {value && (
+          <button
+            onClick={() => onChange("")}
+            style={{
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              padding: 0,
+            }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M18 6 6 18M6 6l12 12"
+                stroke="#B09A8A"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── Tabs ── */
+function Tabs({ active, onChange, dmUnread, groupUnread }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        padding: "10px 16px 0",
+        borderBottom: "1px solid #EDE3DA",
+        background: "#F9F4EF",
+        flexShrink: 0,
+        gap: 4,
+      }}
+    >
+      {[
+        { key: "direct", label: "Direct", count: dmUnread },
+        { key: "groups", label: "Groups", count: groupUnread },
+      ].map(({ key, label, count }) => (
+        <button
+          key={key}
+          onClick={() => onChange(key)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "8px 14px",
+            border: "none",
+            background: "transparent",
+            fontSize: 13,
+            fontWeight: active === key ? 600 : 400,
+            color: active === key ? "#C96A3A" : "#8A7060",
+            cursor: "pointer",
+            borderBottom:
+              active === key ? "2px solid #C96A3A" : "2px solid transparent",
+            transition: "all 0.15s",
+          }}
+        >
+          {label}
+          {count > 0 && (
+            <span
+              style={{
+                background: active === key ? "#C96A3A" : "#E8D5C4",
+                color: active === key ? "#F9F4EF" : "#7A5A48",
+                fontSize: 10,
+                fontWeight: 700,
+                minWidth: 16,
+                height: 16,
+                borderRadius: 999,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "0 4px",
+              }}
+            >
+              {count}
+            </span>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ── FAB ── */
+function FAB({ onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      title="New message"
+      style={{
+        position: "fixed",
+        bottom: 84,
+        right: 20,
+        width: 54,
+        height: 54,
+        borderRadius: "50%",
+        border: "none",
+        background: "#C96A3A",
+        color: "#F9F4EF",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        boxShadow: "0 4px 20px rgba(201,106,58,0.38)",
+        transition: "transform 0.15s, background 0.15s",
+        zIndex: 40,
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "scale(1.08)";
+        e.currentTarget.style.background = "#B05A2E";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "scale(1)";
+        e.currentTarget.style.background = "#C96A3A";
+      }}
+      onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.93)")}
+      onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1.06)")}
+    >
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <path
+          d="M16.57 3.6a2 2 0 0 1 2.83 0l1 1a2 2 0 0 1 0 2.83L9 18.83 5 19l.17-4L16.57 3.6Z"
+          stroke="#F9F4EF"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+        <path
+          d="M3 21h18"
+          stroke="#F9F4EF"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          opacity="0.5"
+        />
+      </svg>
+    </button>
+  );
+}
+
+/* ── Empty search state ── */
+function EmptySearch({ query }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "48px 24px",
+        gap: 10,
+        textAlign: "center",
+      }}
+    >
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+        <circle
+          cx="11"
+          cy="11"
+          r="7.5"
+          stroke="#D4BFB0"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        />
+        <path
+          d="M16.5 16.5L21 21"
+          stroke="#D4BFB0"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        />
+      </svg>
+      <p style={{ margin: 0, fontSize: 14, color: "#8A7060" }}>
+        No results for <strong style={{ color: "#5A3A28" }}>"{query}"</strong>
+      </p>
+      <p style={{ margin: 0, fontSize: 12, color: "#B09A8A" }}>
+        Try a different name or keyword
+      </p>
+    </div>
+  );
+}
+
+/* ── Main export ── */
+export default function MessagesPanel({
+  variant = "sidebar",
+  onSelect,
+  selectedId,
+}) {
+  const [tab, setTab] = useState("direct");
+  const [search, setSearch] = useState("");
+  const [isExpanded, setIsExpanded] = useState(true);
+
+  /* sidebar keeps its own selection state */
+  const [sidebarSelected, setSidebarSelected] = useState(null);
+
+  const dmUnread = MOCK_DMS.reduce((s, d) => s + (d.unread > 0 ? 1 : 0), 0);
+  const groupUnread = MOCK_GROUPS.reduce(
+    (s, g) => s + (g.unread > 0 ? 1 : 0),
+    0,
+  );
+
+  const filteredDMs = MOCK_DMS.filter(
+    (d) =>
+      d.name.toLowerCase().includes(search.toLowerCase()) ||
+      d.preview.toLowerCase().includes(search.toLowerCase()),
+  );
+  const filteredGroups = MOCK_GROUPS.filter(
+    (g) =>
+      g.name.toLowerCase().includes(search.toLowerCase()) ||
+      g.preview.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  const currentList = tab === "direct" ? filteredDMs : filteredGroups;
+  const isGroup = tab === "groups";
+
+  function handleSelect(item) {
+    if (variant === "page") {
+      onSelect?.({ ...item, rounded: isGroup });
+    } else {
+      setSidebarSelected(item.id === sidebarSelected ? null : item.id);
+    }
+  }
+
+  const body = (
+    <>
+      <SearchBar value={search} onChange={setSearch} />
+      <Tabs
+        active={tab}
+        onChange={setTab}
+        dmUnread={dmUnread}
+        groupUnread={groupUnread}
+      />
+      <div>
+        {currentList.length === 0 ? (
+          <EmptySearch query={search} />
+        ) : (
+          currentList.map((item) => (
+            <ConvoRow
+              key={item.id}
+              item={item}
+              rounded={isGroup}
+              selected={
+                variant === "page"
+                  ? selectedId === item.id
+                  : sidebarSelected === item.id
+              }
+              onClick={() => handleSelect(item)}
+            />
+          ))
+        )}
+      </div>
+    </>
+  );
+
+  /* ── page variant ── */
+  if (variant === "page") {
+    return (
+      <div
+        style={{
+          background: "#F9F4EF",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <div
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 10,
+            height: 56,
+            padding: "0 20px",
+            display: "flex",
+            alignItems: "center",
+            background: "rgba(249,244,239,0.95)",
+            backdropFilter: "blur(12px)",
+            borderBottom: "1px solid #EDE3DA",
+            flexShrink: 0,
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "'DM Serif Display', Georgia, serif",
+              fontSize: 20,
+              color: "#1C1410",
+            }}
+          >
+            Messages
+          </span>
+        </div>
+        {body}
+        <FAB onClick={() => {}} />
+      </div>
+    );
+  }
+
+  /* ── sidebar variant ── */
+  return (
+    <div
+      style={{
+        width: isExpanded ? 300 : 64,
+        height: "100vh",
+        position: "sticky",
+        top: 0,
+        background: "#F9F4EF",
+        borderLeft: "1px solid #EDE3DA",
+        display: "flex",
+        flexDirection: "column",
+        flexShrink: 0,
+        transition: "width 0.3s ease",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          width: 300,
+          height: 56,
+          padding: "0 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          borderBottom: "1px solid #EDE3DA",
+          flexShrink: 0,
+        }}
+      >
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: "50%",
+            border: "none",
+            background: "transparent",
+            color: "#8A7060",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "background 0.2s",
+            flexShrink: 0,
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "#F0E5DB")}
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.background = "transparent")
+          }
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path
+              d={isExpanded ? "M15 18l-6-6 6-6" : "M9 18l6-6-6-6"}
+              stroke="#8A7060"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+        <span
+          style={{
+            fontFamily: "'DM Serif Display', Georgia, serif",
+            fontSize: 17,
+            color: "#1C1410",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Messages
+        </span>
+      </div>
+
+      {isExpanded && (
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            overflowX: "hidden",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {body}
+        </div>
+      )}
+
+      {isExpanded && <FAB onClick={() => {}} />}
+    </div>
+  );
+}

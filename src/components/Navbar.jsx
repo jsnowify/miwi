@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-
-/* ─── Spring CSS ─────────────────────────────────────────────── */
+import SettingsSheet from "./SettingsSheet";
 
 const SPRING_CSS = `
 @keyframes navSpring {
@@ -236,8 +235,6 @@ function ComposeBtn({ onClick }) {
   );
 }
 
-/* ─── Circles button for mobile topbar ──────────────────────── */
-
 export function CirclesTopbarBtn({ active, onClick }) {
   return (
     <button
@@ -268,7 +265,7 @@ export function CirclesTopbarBtn({ active, onClick }) {
 
 /* ─── Mobile bottom nav ──────────────────────────────────────── */
 
-function MobileNav({ active, setActive, onCompose }) {
+function MobileNav({ active, setActive, onCompose, navigate, onSettings }) {
   return (
     <nav
       style={{
@@ -296,40 +293,48 @@ function MobileNav({ active, setActive, onCompose }) {
           padding: "0 8px",
         }}
       >
-        {/* Home */}
         <NavBtn
           active={active === "home"}
-          onClick={() => setActive("home")}
+          onClick={() => {
+            setActive("home");
+            navigate("/feed");
+          }}
           label="Home"
         >
           <HomeIcon active={active === "home"} />
         </NavBtn>
 
-        {/* Messages */}
         <NavBtn
           active={active === "messages"}
-          onClick={() => setActive("messages")}
+          onClick={() => {
+            setActive("messages");
+            navigate("/messages");
+          }}
           label="Messages"
         >
           <MessageIcon active={active === "messages"} />
         </NavBtn>
 
-        {/* Compose (center) */}
         <ComposeBtn onClick={onCompose} />
 
-        {/* Notifications */}
         <NavBtn
           active={active === "activity"}
-          onClick={() => setActive("activity")}
-          label="Notifications"
+          onClick={() => {
+            setActive("activity");
+            navigate("/activity");
+          }}
+          label="Activity"
         >
           <HeartIcon active={active === "activity"} />
         </NavBtn>
 
-        {/* Profile */}
+        {/* Profile — tap goes to profile, settings accessible via ⚙️ on that page */}
         <NavBtn
           active={active === "profile"}
-          onClick={() => setActive("profile")}
+          onClick={() => {
+            setActive("profile");
+            navigate("/profile");
+          }}
           label="Profile"
         >
           <UserIcon active={active === "profile"} />
@@ -341,7 +346,13 @@ function MobileNav({ active, setActive, onCompose }) {
 
 /* ─── Desktop left sidebar ───────────────────────────────────── */
 
-function DesktopSidebar({ active, setActive, onCompose, navigate }) {
+function DesktopSidebar({
+  active,
+  setActive,
+  onCompose,
+  navigate,
+  onSettings,
+}) {
   return (
     <nav
       style={{
@@ -370,7 +381,10 @@ function DesktopSidebar({ active, setActive, onCompose, navigate }) {
         }}
       >
         <span
-          onClick={() => window.scrollTo(0, 0)}
+          onClick={() => {
+            setActive("home");
+            navigate("/feed");
+          }}
           style={{
             fontFamily: "'DM Serif Display', Georgia, serif",
             fontSize: 30,
@@ -383,7 +397,7 @@ function DesktopSidebar({ active, setActive, onCompose, navigate }) {
         </span>
       </div>
 
-      {/* Main nav: Home | Circles | + | Notifications | Profile */}
+      {/* Main nav */}
       <div
         style={{
           display: "flex",
@@ -394,7 +408,10 @@ function DesktopSidebar({ active, setActive, onCompose, navigate }) {
       >
         <NavBtn
           active={active === "home"}
-          onClick={() => setActive("home")}
+          onClick={() => {
+            setActive("home");
+            navigate("/feed");
+          }}
           label="Home"
         >
           <HomeIcon active={active === "home"} />
@@ -402,7 +419,10 @@ function DesktopSidebar({ active, setActive, onCompose, navigate }) {
 
         <NavBtn
           active={active === "circles"}
-          onClick={() => setActive("circles")}
+          onClick={() => {
+            setActive("circles");
+            navigate("/circles");
+          }}
           label="Circles"
         >
           <CirclesIcon active={active === "circles"} />
@@ -412,22 +432,28 @@ function DesktopSidebar({ active, setActive, onCompose, navigate }) {
 
         <NavBtn
           active={active === "activity"}
-          onClick={() => setActive("activity")}
-          label="Notifications"
+          onClick={() => {
+            setActive("activity");
+            navigate("/activity");
+          }}
+          label="Activity"
         >
           <HeartIcon active={active === "activity"} />
         </NavBtn>
 
         <NavBtn
           active={active === "profile"}
-          onClick={() => setActive("profile")}
+          onClick={() => {
+            setActive("profile");
+            navigate("/profile");
+          }}
           label="Profile"
         >
           <UserIcon active={active === "profile"} />
         </NavBtn>
       </div>
 
-      {/* Bottom utilities */}
+      {/* Bottom — burger opens settings (pin removed) */}
       <div
         style={{
           flex: 1,
@@ -435,18 +461,21 @@ function DesktopSidebar({ active, setActive, onCompose, navigate }) {
           flexDirection: "column",
           justifyContent: "flex-end",
           alignItems: "center",
-          gap: 16,
           paddingBottom: 8,
         }}
       >
-        <NavBtn onClick={() => {}}>
-          <i className="ti ti-pin" style={{ fontSize: 26, strokeWidth: 2.5 }} />
-        </NavBtn>
-        <NavBtn onClick={() => navigate("/")}>
-          <i
-            className="ti ti-menu-2"
-            style={{ fontSize: 26, strokeWidth: 2.5 }}
-          />
+        <NavBtn onClick={onSettings} label="Settings">
+          <svg
+            width="26"
+            height="26"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+          >
+            <path d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
         </NavBtn>
       </div>
     </nav>
@@ -460,6 +489,7 @@ export default function Navbar({ active, setActive, onCompose }) {
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" ? window.innerWidth < 768 : false,
   );
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     const handle = () => setIsMobile(window.innerWidth < 768);
@@ -467,18 +497,27 @@ export default function Navbar({ active, setActive, onCompose }) {
     return () => window.removeEventListener("resize", handle);
   }, []);
 
-  if (isMobile) {
-    return (
-      <MobileNav active={active} setActive={setActive} onCompose={onCompose} />
-    );
-  }
-
   return (
-    <DesktopSidebar
-      active={active}
-      setActive={setActive}
-      onCompose={onCompose}
-      navigate={navigate}
-    />
+    <>
+      {isMobile ? (
+        <MobileNav
+          active={active}
+          setActive={setActive}
+          onCompose={onCompose}
+          navigate={navigate}
+          onSettings={() => setShowSettings(true)}
+        />
+      ) : (
+        <DesktopSidebar
+          active={active}
+          setActive={setActive}
+          onCompose={onCompose}
+          navigate={navigate}
+          onSettings={() => setShowSettings(true)}
+        />
+      )}
+
+      {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} />}
+    </>
   );
 }

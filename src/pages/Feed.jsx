@@ -5,6 +5,9 @@ import ComposeSheet from "../components/ComposeSheet";
 import MessagesPanel from "../components/MessagesPanel";
 import { MOCK_THREADS } from "../../data";
 
+const SIDEBAR_EXPANDED_W = 300;
+const SIDEBAR_COLLAPSED_W = 64;
+
 /* ─── Story ring ────────────────────────────────────────────── */
 
 function StoryRing({ post, hasNew }) {
@@ -229,9 +232,17 @@ export default function Feed() {
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" ? window.innerWidth < 768 : false,
   );
+  const [isDesktopWide, setIsDesktopWide] = useState(
+    typeof window !== "undefined" ? window.innerWidth >= 1280 : false,
+  );
+  // Track whether the messages sidebar is expanded so we can size its slot correctly
+  const [sidebarExpanded, setSidebarExpanded] = useState(true);
 
   useEffect(() => {
-    const handle = () => setIsMobile(window.innerWidth < 768);
+    const handle = () => {
+      setIsMobile(window.innerWidth < 768);
+      setIsDesktopWide(window.innerWidth >= 1280);
+    };
     window.addEventListener("resize", handle);
     return () => window.removeEventListener("resize", handle);
   }, []);
@@ -290,7 +301,6 @@ export default function Feed() {
       <div
         style={{ minHeight: "100vh", display: "flex", background: "#F9F4EF" }}
       >
-        {/* Left sidebar nav */}
         <Navbar
           active={activeTab}
           setActive={setActiveTab}
@@ -299,16 +309,23 @@ export default function Feed() {
 
         {/* Center feed */}
         <div
-          style={{ flex: 1, minWidth: 0, transition: "flex 0.3s ease" }}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            display: "flex",
+            justifyContent: isMobile ? "stretch" : "center",
+            transition: "all 0.2s ease",
+          }}
           className="md:ml-[80px] pb-[64px] md:pb-0"
         >
           <div
             style={{
-              maxWidth: 600,
-              margin: "0 auto",
+              width: "100%",
+              maxWidth: isDesktopWide ? 720 : 600,
               minHeight: "100vh",
               borderLeft: "1px solid #EDE3DA",
               borderRight: "1px solid #EDE3DA",
+              transition: "max-width 0.2s ease",
             }}
             className="border-x-0 md:border-x"
           >
@@ -359,7 +376,7 @@ export default function Feed() {
               style={{
                 display: "flex",
                 gap: 16,
-                padding: "16px 20px",
+                padding: isDesktopWide ? "20px 32px" : "16px 20px",
                 borderBottom: "1px solid #EDE3DA",
                 overflowX: "auto",
                 WebkitOverflowScrolling: "touch",
@@ -377,7 +394,7 @@ export default function Feed() {
             {/* Threads */}
             <div
               style={{
-                padding: "20px 20px 40px",
+                padding: isDesktopWide ? "24px 32px 48px" : "20px 20px 40px",
                 display: "flex",
                 flexDirection: "column",
                 gap: 20,
@@ -394,8 +411,21 @@ export default function Feed() {
           </div>
         </div>
 
-        {/* Right messages sidebar — desktop only */}
-        {!isMobile && <MessagesPanel variant="sidebar" />}
+        {/* Right messages sidebar — width tracks expanded state so no dead whitespace */}
+        {!isMobile && (
+          <div
+            style={{
+              width: sidebarExpanded ? SIDEBAR_EXPANDED_W : SIDEBAR_COLLAPSED_W,
+              flexShrink: 0,
+              transition: "width 0.25s ease",
+            }}
+          >
+            <MessagesPanel
+              variant="sidebar"
+              onExpandChange={setSidebarExpanded}
+            />
+          </div>
+        )}
       </div>
 
       {composing && (

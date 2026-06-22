@@ -1,73 +1,5 @@
 import { useState } from "react";
-
-export const MOCK_DMS = [
-  {
-    id: 1,
-    name: "sofía",
-    avatar: "S",
-    avatarColor: "#C96A3A",
-    preview: "omg same 🌿 i needed that too",
-    time: "2m",
-    unread: 2,
-  },
-  {
-    id: 2,
-    name: "marco",
-    avatar: "M",
-    avatarColor: "#8B5E3C",
-    preview: "bro we need to celebrate!!!",
-    time: "15m",
-    unread: 1,
-  },
-  {
-    id: 3,
-    name: "lea",
-    avatar: "L",
-    avatarColor: "#B07D62",
-    preview: "hahaha the suitcase is still there",
-    time: "1h",
-    unread: 0,
-  },
-  {
-    id: 4,
-    name: "juno",
-    avatar: "J",
-    avatarColor: "#7A9E8A",
-    preview: "how are you feeling today?",
-    time: "3h",
-    unread: 0,
-  },
-];
-
-export const MOCK_GROUPS = [
-  {
-    id: 101,
-    name: "Barkada 🔥",
-    avatar: "B",
-    avatarColor: "#7A4A2A",
-    preview: "marco: let's go out tmrw",
-    time: "5m",
-    unread: 4,
-  },
-  {
-    id: 102,
-    name: "Long-distance 🍃",
-    avatar: "L",
-    avatarColor: "#4A7A6A",
-    preview: "alex: it's raining here too 🌧️",
-    time: "1h",
-    unread: 1,
-  },
-  {
-    id: 103,
-    name: "Just us two 🌙",
-    avatar: "J",
-    avatarColor: "#6A5A9A",
-    preview: "theo: goodnight 🌙",
-    time: "4h",
-    unread: 0,
-  },
-];
+import { MOCK_DMS, MOCK_GROUPS } from "./mockMessages";
 
 /* ── Avatar ── */
 function Avatar({ label, color, size = 44, rounded = false }) {
@@ -118,7 +50,60 @@ function Badge({ count }) {
 }
 
 /* ── Conversation row ── */
-function ConvoRow({ item, selected, onClick, rounded = false }) {
+function ConvoRow({
+  item,
+  selected,
+  onClick,
+  rounded = false,
+  collapsed = false,
+}) {
+  if (collapsed) {
+    return (
+      <button
+        onClick={onClick}
+        title={item.name}
+        style={{
+          width: "100%",
+          display: "flex",
+          justifyContent: "center",
+          padding: "8px 0",
+          background: selected ? "#F0E5DB" : "transparent",
+          border: "none",
+          cursor: "pointer",
+        }}
+        onMouseEnter={(e) => {
+          if (!selected) e.currentTarget.style.background = "#FAF3EC";
+        }}
+        onMouseLeave={(e) => {
+          if (!selected) e.currentTarget.style.background = "transparent";
+        }}
+      >
+        <div style={{ position: "relative" }}>
+          <Avatar
+            label={item.avatar}
+            color={item.avatarColor}
+            size={36}
+            rounded={rounded}
+          />
+          {item.unread > 0 && (
+            <div
+              style={{
+                position: "absolute",
+                bottom: -1,
+                right: -1,
+                width: 10,
+                height: 10,
+                borderRadius: "50%",
+                background: "#C96A3A",
+                border: "2px solid #F9F4EF",
+              }}
+            />
+          )}
+        </div>
+      </button>
+    );
+  }
+
   return (
     <button
       onClick={onClick}
@@ -360,7 +345,64 @@ function Tabs({ active, onChange, dmUnread, groupUnread }) {
 }
 
 /* ── FAB ── */
-function FAB({ onClick }) {
+function FAB({ onClick, style }) {
+  return (
+    <button
+      onClick={onClick}
+      title="New message"
+      style={{
+        position: "absolute",
+        bottom: 20,
+        right: 20,
+        width: 50,
+        height: 50,
+        borderRadius: "50%",
+        border: "none",
+        background: "#C96A3A",
+        color: "#F9F4EF",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        boxShadow: "0 4px 20px rgba(201,106,58,0.38)",
+        transition: "transform 0.15s, background 0.15s",
+        zIndex: 40,
+        ...style,
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "scale(1.08)";
+        e.currentTarget.style.background = "#B05A2E";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "scale(1)";
+        e.currentTarget.style.background = "#C96A3A";
+      }}
+      onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.93)")}
+      onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1.06)")}
+    >
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <path
+          d="M16.57 3.6a2 2 0 0 1 2.83 0l1 1a2 2 0 0 1 0 2.83L9 18.83 5 19l.17-4L16.57 3.6Z"
+          stroke="#F9F4EF"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+        <path
+          d="M3 21h18"
+          stroke="#F9F4EF"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          opacity="0.5"
+        />
+      </svg>
+    </button>
+  );
+}
+
+/* ── Mobile FAB ── */
+function MobileFAB({ onClick }) {
   return (
     <button
       onClick={onClick}
@@ -460,12 +502,11 @@ export default function MessagesPanel({
   variant = "sidebar",
   onSelect,
   selectedId,
+  onExpandChange,
 }) {
   const [tab, setTab] = useState("direct");
   const [search, setSearch] = useState("");
   const [isExpanded, setIsExpanded] = useState(true);
-
-  /* sidebar keeps its own selection state */
   const [sidebarSelected, setSidebarSelected] = useState(null);
 
   const dmUnread = MOCK_DMS.reduce((s, d) => s + (d.unread > 0 ? 1 : 0), 0);
@@ -487,6 +528,12 @@ export default function MessagesPanel({
 
   const currentList = tab === "direct" ? filteredDMs : filteredGroups;
   const isGroup = tab === "groups";
+
+  function toggleExpanded() {
+    const next = !isExpanded;
+    setIsExpanded(next);
+    onExpandChange?.(next); // notify Feed so it can resize the sidebar slot
+  }
 
   function handleSelect(item) {
     if (variant === "page") {
@@ -514,6 +561,7 @@ export default function MessagesPanel({
               key={item.id}
               item={item}
               rounded={isGroup}
+              collapsed={false}
               selected={
                 variant === "page"
                   ? selectedId === item.id
@@ -535,6 +583,9 @@ export default function MessagesPanel({
           background: "#F9F4EF",
           display: "flex",
           flexDirection: "column",
+          height: "100%",
+          minHeight: 0,
+          position: "relative",
         }}
       >
         <div
@@ -562,17 +613,20 @@ export default function MessagesPanel({
             Messages
           </span>
         </div>
-        {body}
-        <FAB onClick={() => {}} />
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>{body}</div>
+        <MobileFAB onClick={() => {}} />
       </div>
     );
   }
 
   /* ── sidebar variant ── */
+  const SIDEBAR_EXPANDED_W = 300;
+  const SIDEBAR_COLLAPSED_W = 64;
+
   return (
     <div
       style={{
-        width: isExpanded ? 300 : 64,
+        width: isExpanded ? SIDEBAR_EXPANDED_W : SIDEBAR_COLLAPSED_W,
         height: "100vh",
         position: "sticky",
         top: 0,
@@ -581,24 +635,27 @@ export default function MessagesPanel({
         display: "flex",
         flexDirection: "column",
         flexShrink: 0,
-        transition: "width 0.3s ease",
+        transition: "width 0.25s ease",
         overflow: "hidden",
       }}
     >
+      {/* Header */}
       <div
         style={{
-          width: 300,
-          height: 56,
-          padding: "0 16px",
+          width: "100%",
+          height: 60, // matches feed desktop header height
+          padding: isExpanded ? "0 16px" : "0",
           display: "flex",
           alignItems: "center",
+          justifyContent: isExpanded ? "flex-start" : "center",
           gap: 8,
           borderBottom: "1px solid #EDE3DA",
           flexShrink: 0,
         }}
       >
         <button
-          onClick={() => setIsExpanded(!isExpanded)}
+          onClick={toggleExpanded}
+          title={isExpanded ? "Collapse" : "Expand"}
           style={{
             width: 32,
             height: 32,
@@ -628,33 +685,71 @@ export default function MessagesPanel({
             />
           </svg>
         </button>
-        <span
-          style={{
-            fontFamily: "'DM Serif Display', Georgia, serif",
-            fontSize: 17,
-            color: "#1C1410",
-            whiteSpace: "nowrap",
-          }}
-        >
-          Messages
-        </span>
+        {isExpanded && (
+          <span
+            style={{
+              fontFamily: "'DM Serif Display', Georgia, serif",
+              fontSize: 17,
+              color: "#1C1410",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Messages
+          </span>
+        )}
       </div>
 
-      {isExpanded && (
+      {isExpanded ? (
+        // ── Expanded body ──
         <div
           style={{
             flex: 1,
+            minHeight: 0,
             overflowY: "auto",
             overflowX: "hidden",
             display: "flex",
             flexDirection: "column",
+            position: "relative",
           }}
         >
           {body}
+          <FAB onClick={() => {}} />
+        </div>
+      ) : (
+        // ── Collapsed rail — paddingTop: 8 only, header already pushes content down ──
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: "auto",
+            overflowX: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            paddingTop: 8,
+            position: "relative",
+          }}
+        >
+          {currentList.map((item) => (
+            <ConvoRow
+              key={item.id}
+              item={item}
+              rounded={isGroup}
+              collapsed={true}
+              selected={sidebarSelected === item.id}
+              onClick={() => handleSelect(item)}
+            />
+          ))}
+          <FAB
+            onClick={() => {}}
+            style={{
+              position: "absolute",
+              right: "50%",
+              transform: "translateX(50%)",
+            }}
+          />
         </div>
       )}
-
-      {isExpanded && <FAB onClick={() => {}} />}
     </div>
   );
 }

@@ -1,0 +1,68 @@
+export const MOCK_DMS = [
+  {
+    id: 1,
+    name: "sofía",
+    avatar: "S",
+    avatarColor: "#C96A3A",
+    preview: "omg same 🌿 i needed that too",
+    time: "2m",
+    unread: 2,
+  },
+  {
+    id: 2,
+    name: "marco",
+    avatar: "M",
+    avatarColor: "#8B5E3C",
+    preview: "bro we need to celebrate!!!",
+    time: "15m",
+    unread: 1,
+  },
+  {
+    id: 3,
+    name: "lea",
+    avatar: "L",
+    avatarColor: "#B07D62",
+    preview: "hahaha the suitcase is still there",
+    time: "1h",
+    unread: 0,
+  },
+  {
+    id: 4,
+    name: "juno",
+    avatar: "J",
+    avatarColor: "#7A9E8A",
+    preview: "how are you feeling today?",
+    time: "3h",
+    unread: 0,
+  },
+];
+
+export const MOCK_GROUPS = [
+  {
+    id: 101,
+    name: "Barkada 🔥",
+    avatar: "B",
+    avatarColor: "#7A4A2A",
+    preview: "marco: let's go out tmrw",
+    time: "5m",
+    unread: 4,
+  },
+  {
+    id: 102,
+    name: "Long-distance 🍃",
+    avatar: "L",
+    avatarColor: "#4A7A6A",
+    preview: "alex: it's raining here too 🌧️",
+    time: "1h",
+    unread: 1,
+  },
+  {
+    id: 103,
+    name: "Just us two 🌙",
+    avatar: "J",
+    avatarColor: "#6A5A9A",
+    preview: "theo: goodnight 🌙",
+    time: "4h",
+    unread: 0,
+  },
+];

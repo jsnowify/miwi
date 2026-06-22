@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import SettingsSheet from "./SettingsSheet";
+import { useProfile } from "../hooks/useProfile";
 
 const SPRING_CSS = `
 @keyframes navSpring {
@@ -263,6 +264,69 @@ export function CirclesTopbarBtn({ active, onClick }) {
   );
 }
 
+/* ─── Profile avatar (used as the top-of-sidebar mark) ──────── */
+
+function SidebarAvatar({ onClick }) {
+  const { data: profile } = useProfile();
+  const size = 40;
+
+  const initial =
+    profile?.initial ?? profile?.display_name?.charAt(0).toUpperCase() ?? "?";
+
+  return (
+    <button
+      onClick={(e) => {
+        bounce(e.currentTarget);
+        onClick?.();
+      }}
+      title="Home"
+      style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        padding: 2,
+        border: "none",
+        cursor: "pointer",
+        background: "linear-gradient(135deg, #C96A3A, #E8B89A)",
+        flexShrink: 0,
+      }}
+    >
+      {profile?.avatar_url ? (
+        <img
+          src={profile.avatar_url}
+          alt={profile.display_name ?? "Profile"}
+          style={{
+            width: "100%",
+            height: "100%",
+            borderRadius: "50%",
+            border: "2px solid #F9F4EF",
+            objectFit: "cover",
+            display: "block",
+          }}
+        />
+      ) : (
+        <div
+          style={{
+            width: "100%",
+            height: "100%",
+            borderRadius: "50%",
+            background: "#C96A3A",
+            border: "2px solid #F9F4EF",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#F9F4EF",
+            fontSize: 15,
+            fontFamily: "'DM Serif Display', Georgia, serif",
+          }}
+        >
+          {initial}
+        </div>
+      )}
+    </button>
+  );
+}
+
 /* ─── Mobile bottom nav ──────────────────────────────────────── */
 
 function MobileNav({ active, setActive, onCompose, navigate, onSettings }) {
@@ -371,7 +435,7 @@ function DesktopSidebar({
         borderRight: "1px solid #EDE3DA",
       }}
     >
-      {/* Logo */}
+      {/* Profile avatar (replaces the old "m" wordmark) */}
       <div
         style={{
           flex: 1,
@@ -380,21 +444,12 @@ function DesktopSidebar({
           paddingTop: 4,
         }}
       >
-        <span
+        <SidebarAvatar
           onClick={() => {
             setActive("home");
             navigate("/feed");
           }}
-          style={{
-            fontFamily: "'DM Serif Display', Georgia, serif",
-            fontSize: 30,
-            color: "#1C1410",
-            cursor: "pointer",
-            userSelect: "none",
-          }}
-        >
-          m
-        </span>
+        />
       </div>
 
       {/* Main nav */}

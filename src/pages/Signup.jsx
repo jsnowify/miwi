@@ -128,7 +128,9 @@ export default function Signup() {
     };
   }
 
-  // Username live check
+  // Username live check — uses RPC (SECURITY DEFINER) so RLS on the
+  // profiles table doesn't hide usernames belonging to people outside
+  // the signing-up user's circles.
   useEffect(() => {
     const username = form.username;
     if (!username) {
@@ -144,12 +146,15 @@ export default function Signup() {
     clearTimeout(usernameDebounce.current);
 
     usernameDebounce.current = setTimeout(async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("username", username)
-        .maybeSingle();
-      setUsernameStatus(data ? "taken" : "available");
+      const { data: exists, error: rpcError } = await supabase.rpc(
+        "check_username_exists",
+        { p_username: username },
+      );
+      if (rpcError) {
+        setUsernameStatus(null);
+        return;
+      }
+      setUsernameStatus(exists ? "taken" : "available");
     }, 500);
 
     return () => clearTimeout(usernameDebounce.current);

@@ -11,6 +11,7 @@ import Messages from "./pages/Messages.jsx";
 import Profile from "./pages/Profile";
 import Activity from "./pages/Activity.jsx";
 import ResetPassword from "./pages/ResetPassword";
+import Miwi from "./pages/Miwi";
 
 export default function App() {
   return (
@@ -81,6 +82,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/miwi" element={<Miwi />} />
           <Route path="/reset-password" element={<ResetPassword />} />
         </Routes>
       </BrowserRouter>

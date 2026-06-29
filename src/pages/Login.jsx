@@ -192,7 +192,7 @@ export default function Login() {
                     padding: 0,
                   }}
                 >
-                  {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                  {showPassword ? <EyeIcon /> : <EyeOffIcon />}
                 </button>
               </div>
 

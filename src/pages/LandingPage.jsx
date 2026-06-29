@@ -222,7 +222,7 @@ export default function LandingPage() {
                       padding: 0,
                     }}
                   >
-                    {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                    {showPassword ? <EyeIcon /> : <EyeOffIcon />}
                   </button>
                 </div>
               </Field>

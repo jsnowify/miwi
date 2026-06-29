@@ -482,7 +482,7 @@ export default function Signup() {
                       padding: 0,
                     }}
                   >
-                    {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                    {showPassword ? <EyeIcon /> : <EyeOffIcon />}
                   </button>
                 </div>
               </div>

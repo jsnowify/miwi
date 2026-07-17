@@ -12,6 +12,8 @@ import Profile from "./pages/Profile";
 import Activity from "./pages/Activity.jsx";
 import ResetPassword from "./pages/ResetPassword";
 import Miwi from "./pages/Miwi";
+import TermsOfService from "./pages/TermsOfService";
+import LegalPolicy from "./pages/LegalPolicy";
 
 export default function App() {
   return (
@@ -82,6 +84,9 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+
+          <Route path="/privacy" element={<LegalPolicy />} />
+          <Route path="/terms" element={<TermsOfService />} />
           <Route path="/miwi" element={<Miwi />} />
           <Route path="/reset-password" element={<ResetPassword />} />
         </Routes>

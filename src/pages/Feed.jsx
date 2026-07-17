@@ -1,107 +1,138 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar, { CirclesTopbarBtn } from "../components/Navbar";
 import ComposeSheet from "../components/ComposeSheet";
 import MessagesPanel from "../components/MessagesPanel";
-import { MOCK_THREADS } from "../../data";
+import { useFeed } from "../hooks/useFeed";
 
 const SIDEBAR_EXPANDED_W = 300;
 const SIDEBAR_COLLAPSED_W = 64;
 
+const AVATAR_COLORS = [
+  "#C96A3A",
+  "#8B5E3C",
+  "#B07D62",
+  "#7A9E8A",
+  "#9E7A8A",
+  "#6A8A9E",
+  "#9E6A8A",
+  "#8A9E6A",
+  "#7A6A9E",
+];
+
+// Deterministic color per user id so the same person always gets the same
+// avatar color across the app, without needing a color column in the DB.
+function colorForId(id) {
+  if (!id) return AVATAR_COLORS[0];
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+function timeAgo(ts) {
+  const diff = (Date.now() - new Date(ts)) / 1000;
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
+/* ─── Avatar (shared by story ring + post) ─────────────────── */
+
+function PersonAvatar({ author, size, ring }) {
+  const initial = author?.display_name?.charAt(0).toUpperCase() ?? "?";
+  const img = author?.avatar_url ? (
+    <img
+      src={author.avatar_url}
+      alt={author.display_name}
+      style={{
+        width: "100%",
+        height: "100%",
+        borderRadius: "50%",
+        border: `${ring ? 2.5 : 3}px solid #F9F4EF`,
+        objectFit: "cover",
+      }}
+    />
+  ) : (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        borderRadius: "50%",
+        background: colorForId(author?.id),
+        border: `${ring ? 2.5 : 3}px solid #F9F4EF`,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "#F9F4EF",
+        fontSize: size * 0.36,
+        fontFamily: "'DM Serif Display', Georgia, serif",
+      }}
+    >
+      {initial}
+    </div>
+  );
+
+  if (!ring) return <div style={{ width: size, height: size }}>{img}</div>;
+
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        padding: 2.5,
+        background: ring
+          ? "linear-gradient(135deg, #C96A3A, #E8B89A)"
+          : "transparent",
+      }}
+    >
+      {img}
+    </div>
+  );
+}
+
 /* ─── Story ring ────────────────────────────────────────────── */
 
-function StoryRing({ post, hasNew }) {
+function StoryRing({ author, hasNew }) {
   return (
     <div className="flex flex-col items-center gap-1.5 cursor-pointer flex-shrink-0">
-      <div
-        style={{
-          width: 52,
-          height: 52,
-          borderRadius: "50%",
-          padding: 2.5,
-          background: hasNew
-            ? "linear-gradient(135deg, #C96A3A, #E8B89A)"
-            : "transparent",
-          border: hasNew ? "none" : "2px solid #E8DDD5",
-        }}
-      >
-        <div
-          style={{
-            width: "100%",
-            height: "100%",
-            borderRadius: "50%",
-            background: post.avatarColor,
-            border: "2.5px solid #F9F4EF",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#F9F4EF",
-            fontSize: 16,
-            fontFamily: "'DM Serif Display', Georgia, serif",
-          }}
-        >
-          {post.avatar}
-        </div>
-      </div>
-      <span style={{ fontSize: 11, color: "#8A7060" }}>{post.handle}</span>
+      <PersonAvatar author={author} size={52} ring={hasNew} />
+      <span style={{ fontSize: 11, color: "#8A7060" }}>@{author.username}</span>
     </div>
   );
 }
 
 /* ─── Single post ───────────────────────────────────────────── */
 
-function Post({ post, isLast }) {
+function Post({ post, visible }) {
+  const reactionMap = (post.reactions ?? []).reduce((acc, r) => {
+    acc[r.reaction] = (acc[r.reaction] ?? 0) + 1;
+    return acc;
+  }, {});
+  const reactions = Object.entries(reactionMap).map(([emoji, count]) => ({
+    emoji,
+    count,
+  }));
+
   return (
     <div
       style={{
         display: "flex",
         gap: 12,
         alignItems: "flex-start",
-        position: "relative",
-        marginBottom: 8,
+        paddingBottom: 20,
+        borderBottom: "1px solid #EDE3DA",
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translateY(0)" : "translateY(10px)",
+        transition: "opacity 0.4s ease, transform 0.4s ease",
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-        }}
-      >
-        <div
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: "50%",
-            background: post.avatarColor,
-            border: "3px solid #F9F4EF",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#F9F4EF",
-            fontSize: 15,
-            flexShrink: 0,
-            zIndex: 1,
-            fontFamily: "'DM Serif Display', Georgia, serif",
-          }}
-        >
-          {post.avatar}
-        </div>
-        {!isLast && (
-          <div
-            style={{
-              width: 2,
-              flex: 1,
-              marginTop: 4,
-              marginBottom: -8,
-              borderRadius: 2,
-              background: "#EDE3DA",
-            }}
-          />
-        )}
-      </div>
+      <PersonAvatar author={post.author} size={40} ring={false} />
 
-      <div style={{ flex: 1, minWidth: 0, paddingBottom: isLast ? 8 : 20 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
             display: "flex",
@@ -112,7 +143,7 @@ function Post({ post, isLast }) {
           }}
         >
           <span style={{ fontWeight: 600, fontSize: 14, color: "#1C1410" }}>
-            {post.name}
+            {post.author?.display_name ?? "someone"}
           </span>
           {post.mood && (
             <span
@@ -124,11 +155,11 @@ function Post({ post, isLast }) {
                 color: "#A05A3A",
               }}
             >
-              {post.mood} {post.moodLabel}
+              {post.mood} {post.mood_label}
             </span>
           )}
           <span style={{ fontSize: 12, color: "#B09A8A", marginLeft: "auto" }}>
-            {post.time}
+            {timeAgo(post.created_at)}
           </span>
         </div>
 
@@ -155,9 +186,9 @@ function Post({ post, isLast }) {
             alignItems: "center",
           }}
         >
-          {post.reactions?.map((r) => (
+          {reactions.map((r) => (
             <button
-              key={r.label}
+              key={r.emoji}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -201,22 +232,40 @@ function Post({ post, isLast }) {
   );
 }
 
-/* ─── Thread card ───────────────────────────────────────────── */
-
-function Thread({ thread, visible }) {
+function EmptyFeed() {
   return (
     <div
       style={{
-        paddingBottom: 12,
-        borderBottom: "1px solid #EDE3DA",
-        opacity: visible ? 1 : 0,
-        transform: visible ? "translateY(0)" : "translateY(10px)",
-        transition: "opacity 0.4s ease, transform 0.4s ease",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "64px 24px",
+        gap: 10,
+        textAlign: "center",
       }}
     >
-      {thread.map((post, i) => (
-        <Post key={post.id} post={post} isLast={i === thread.length - 1} />
-      ))}
+      <div style={{ fontSize: 36, marginBottom: 4 }}>🌿</div>
+      <div
+        style={{
+          fontFamily: "'DM Serif Display', Georgia, serif",
+          fontSize: 18,
+          color: "#1C1410",
+        }}
+      >
+        it's quiet here
+      </div>
+      <div
+        style={{
+          fontSize: 13,
+          color: "#8A7060",
+          lineHeight: 1.7,
+          maxWidth: 240,
+        }}
+      >
+        join or create a circle, then share how you're feeling to get things
+        going.
+      </div>
     </div>
   );
 }
@@ -225,17 +274,16 @@ function Thread({ thread, visible }) {
 
 export default function Feed() {
   const navigate = useNavigate();
-  const [threads, setThreads] = useState(MOCK_THREADS);
+  const { data: posts = [], isLoading } = useFeed();
   const [composing, setComposing] = useState(false);
   const [activeTab, setActiveTab] = useState("home");
-  const [visible, setVisible] = useState(MOCK_THREADS.map(() => false));
+  const [visible, setVisible] = useState(false);
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" ? window.innerWidth < 768 : false,
   );
   const [isDesktopWide, setIsDesktopWide] = useState(
     typeof window !== "undefined" ? window.innerWidth >= 1280 : false,
   );
-  // Track whether the messages sidebar is expanded so we can size its slot correctly
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
 
   useEffect(() => {
@@ -247,45 +295,26 @@ export default function Feed() {
     return () => window.removeEventListener("resize", handle);
   }, []);
 
+  // Gentle fade-in once real data has arrived, echoing the old staggered
+  // mock animation without needing per-item timers.
   useEffect(() => {
-    const timers = threads.map((_, i) =>
-      setTimeout(
-        () => {
-          setVisible((prev) => {
-            const next = [...prev];
-            next[i] = true;
-            return next;
-          });
-        },
-        i * 120 + 200,
-      ),
-    );
-    return () => timers.forEach(clearTimeout);
-  }, []);
+    if (!isLoading) {
+      const t = setTimeout(() => setVisible(true), 80);
+      return () => clearTimeout(t);
+    }
+  }, [isLoading]);
 
-  function handlePost({ mood, caption }) {
-    const newPost = {
-      id: Date.now(),
-      name: "you",
-      handle: "you",
-      avatar: "Y",
-      avatarColor: "#C96A3A",
-      mood: mood.emoji,
-      moodLabel: mood.tag,
-      caption: caption || "",
-      time: "just now",
-      reactions: [],
-    };
-    setThreads([[newPost], ...threads]);
-    setVisible([false, ...visible]);
-    setTimeout(() => {
-      setVisible((prev) => {
-        const next = [...prev];
-        next[0] = true;
-        return next;
-      });
-    }, 50);
-  }
+  // One story ring per author, "new" if their latest post was in the last 24h
+  const storyAuthors = useMemo(() => {
+    const seen = new Map();
+    for (const post of posts) {
+      if (!post.author || seen.has(post.author.id)) continue;
+      const hasNew =
+        Date.now() - new Date(post.created_at).getTime() < 1000 * 60 * 60 * 24;
+      seen.set(post.author.id, { author: post.author, hasNew });
+    }
+    return Array.from(seen.values());
+  }, [posts]);
 
   return (
     <>
@@ -372,46 +401,55 @@ export default function Feed() {
             </div>
 
             {/* Story rings */}
-            <div
-              style={{
-                display: "flex",
-                gap: 16,
-                padding: isDesktopWide ? "20px 32px" : "16px 20px",
-                borderBottom: "1px solid #EDE3DA",
-                overflowX: "auto",
-                WebkitOverflowScrolling: "touch",
-              }}
-            >
-              {threads.map((thread, i) => (
-                <StoryRing
-                  key={`story-${thread[0].id}`}
-                  post={thread[0]}
-                  hasNew={i < 2}
-                />
-              ))}
-            </div>
+            {storyAuthors.length > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: 16,
+                  padding: isDesktopWide ? "20px 32px" : "16px 20px",
+                  borderBottom: "1px solid #EDE3DA",
+                  overflowX: "auto",
+                  WebkitOverflowScrolling: "touch",
+                }}
+              >
+                {storyAuthors.map(({ author, hasNew }) => (
+                  <StoryRing key={author.id} author={author} hasNew={hasNew} />
+                ))}
+              </div>
+            )}
 
-            {/* Threads */}
+            {/* Posts */}
             <div
               style={{
                 padding: isDesktopWide ? "24px 32px 48px" : "20px 20px 40px",
                 display: "flex",
                 flexDirection: "column",
-                gap: 20,
+                gap: 4,
               }}
             >
-              {threads.map((thread, i) => (
-                <Thread
-                  key={`thread-${thread[0].id}`}
-                  thread={thread}
-                  visible={visible[i]}
-                />
-              ))}
+              {isLoading ? (
+                <p
+                  style={{
+                    fontSize: 13,
+                    color: "#8A7060",
+                    textAlign: "center",
+                    padding: "24px 0",
+                  }}
+                >
+                  loading your circle's vibes…
+                </p>
+              ) : posts.length === 0 ? (
+                <EmptyFeed />
+              ) : (
+                posts.map((post) => (
+                  <Post key={post.id} post={post} visible={visible} />
+                ))
+              )}
             </div>
           </div>
         </div>
 
-        {/* Right messages sidebar — width tracks expanded state so no dead whitespace */}
+        {/* Right messages sidebar */}
         {!isMobile && (
           <div
             style={{
@@ -428,9 +466,7 @@ export default function Feed() {
         )}
       </div>
 
-      {composing && (
-        <ComposeSheet onClose={() => setComposing(false)} onPost={handlePost} />
-      )}
+      {composing && <ComposeSheet onClose={() => setComposing(false)} />}
     </>
   );
 }

@@ -1,144 +1,124 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Navbar from "../components/Navbar";
+import ComposeSheet from "../components/ComposeSheet";
+import { useCircles } from "../hooks/useCircles";
+import { useFeed } from "../hooks/useFeed";
+import { useAuth } from "../context/AuthContext";
 
-/* ─── Mock data shaped like the Supabase schema ─────────────── */
-/* circles + circle_members + posts(mood) joined for display.   */
-/* Replace with Supabase queries:                                */
-/*   circles: select * from circles where id in (my circle ids) */
-/*   members: circle_members join profiles                       */
-/*   moods:   posts grouped by mood, created_at::date = today    */
+/* ─── Display constants (not stored in the DB) ──────────────── */
 
-const MOCK_CIRCLES = [
-  {
-    id: "c1",
-    emoji: "🔥",
-    bg: "#F9EDE3",
-    name: "Barkada",
+const CIRCLE_BG = ["#F9EDE3", "#E8F3EE", "#EDE8F5", "#F3EEE8", "#E8EEF3"];
+
+const MOOD_COLORS = {
+  calm: "#A0B89A",
+  excited: "#C96A3A",
+  low: "#9AACBB",
+  sleepy: "#9A9EC4",
+  grateful: "#C9B46A",
+  "needing a hug": "#D9A0A0",
+  "at peace": "#A0C4B8",
+  overwhelmed: "#C49AC4",
+  "chaotic good": "#D9B46A",
+};
+const DEFAULT_MOOD_COLOR = "#C9B4A0";
+
+function bgForId(id, list) {
+  if (!id) return list[0];
+  let hash = 0;
+  for (let i = 0; i < id.length; i++)
+    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  return list[Math.abs(hash) % list.length];
+}
+
+function timeAgo(ts) {
+  const diff = (Date.now() - new Date(ts)) / 1000;
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
+function isToday(ts) {
+  const d = new Date(ts);
+  const now = new Date();
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  );
+}
+
+// Turns a raw Supabase circle + the full posts feed into everything the
+// panel needs to render: members with live "posted Xm ago" status, today's
+// mood breakdown, and an activity count for the badge.
+function buildDisplayCircle(circle, posts, currentUserId, idx) {
+  const circlePosts = posts.filter((p) => p.circle_id === circle.id);
+  const todaysPosts = circlePosts.filter((p) => isToday(p.created_at));
+
+  const latestByUser = new Map();
+  for (const post of circlePosts) {
+    if (!latestByUser.has(post.author_id)) {
+      latestByUser.set(post.author_id, post);
+    }
+  }
+
+  const members = (circle.circle_members ?? []).map((cm) => {
+    const profile = cm.profiles;
+    const latest = latestByUser.get(cm.user_id);
+    const postedToday = latest && isToday(latest.created_at);
+    return {
+      id: profile?.id ?? cm.user_id,
+      initial: profile?.display_name?.charAt(0).toUpperCase() ?? "?",
+      color: bgForId(profile?.id ?? cm.user_id, [
+        "#C96A3A",
+        "#8B5E3C",
+        "#B07D62",
+        "#7A9E8A",
+        "#9E7A8A",
+        "#6A8A9E",
+      ]),
+      name: profile?.display_name ?? "someone",
+      mood: postedToday
+        ? `${latest.mood} ${latest.mood_label} · posted ${timeAgo(latest.created_at)}`
+        : "hasn't posted today",
+      you: profile?.id === currentUserId,
+    };
+  });
+
+  const moodCounts = todaysPosts.reduce((acc, p) => {
+    const key = p.mood_label ?? "vibe";
+    acc[key] = acc[key] ?? { count: 0, emoji: p.mood };
+    acc[key].count += 1;
+    return acc;
+  }, {});
+  const total = todaysPosts.length;
+  const moodBreakdown = Object.entries(moodCounts)
+    .map(([label, { count, emoji }]) => ({
+      label: `${emoji} ${label}`,
+      count,
+      pct: total > 0 ? Math.round((count / total) * 100) : 0,
+      color: MOOD_COLORS[label] ?? DEFAULT_MOOD_COLOR,
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  const newPosts = circlePosts.filter(
+    (p) => Date.now() - new Date(p.created_at).getTime() < 1000 * 60 * 60 * 24,
+  ).length;
+
+  return {
+    id: circle.id,
+    emoji: circle.cover_color || "⭕",
+    bg: CIRCLE_BG[idx % CIRCLE_BG.length],
+    name: circle.name,
     description:
-      "The group chat that actually has feelings. 5 members, created March 2026.",
-    newPosts: 3,
-    members: [
-      {
-        id: "u1",
-        initial: "S",
-        color: "#C96A3A",
-        name: "sofía",
-        mood: "🌿 calm · posted 2m ago",
-        you: true,
-      },
-      {
-        id: "u2",
-        initial: "M",
-        color: "#8B5E3C",
-        name: "marco",
-        mood: "🔥 excited · posted 14m ago",
-      },
-      {
-        id: "u3",
-        initial: "L",
-        color: "#B07D62",
-        name: "lea",
-        mood: "🌙 sleepy · posted 1h ago",
-      },
-      {
-        id: "u4",
-        initial: "J",
-        color: "#7A9E8A",
-        name: "juno",
-        mood: "hasn't posted today",
-      },
-      {
-        id: "u5",
-        initial: "R",
-        color: "#9E7A8A",
-        name: "rae",
-        mood: "✨ grateful · posted 3h ago",
-      },
-    ],
-    moodBreakdown: [
-      { label: "🔥 excited", pct: 60, color: "#C96A3A", count: 3 },
-      { label: "🌿 calm", pct: 40, color: "#A0B89A", count: 2 },
-      { label: "🌙 sleepy", pct: 20, color: "#9A9EC4", count: 1 },
-    ],
-    inviteCode: "miwi/brkd·a2f9",
-  },
-  {
-    id: "c2",
-    emoji: "🍃",
-    bg: "#E8F3EE",
-    name: "Long-distance crew",
-    description:
-      "Friends scattered across three timezones. 4 members, created Jan 2026.",
-    newPosts: 1,
-    members: [
-      {
-        id: "u1",
-        initial: "S",
-        color: "#C96A3A",
-        name: "sofía",
-        mood: "🌿 calm · posted 2m ago",
-        you: true,
-      },
-      {
-        id: "u6",
-        initial: "A",
-        color: "#6A8A9E",
-        name: "alex",
-        mood: "🌧️ low · posted 30m ago",
-      },
-      {
-        id: "u7",
-        initial: "P",
-        color: "#9E6A8A",
-        name: "priya",
-        mood: "✨ grateful · posted 5h ago",
-      },
-      {
-        id: "u8",
-        initial: "K",
-        color: "#8A9E6A",
-        name: "kai",
-        mood: "hasn't posted today",
-      },
-    ],
-    moodBreakdown: [
-      { label: "🌿 calm", pct: 50, color: "#A0B89A", count: 2 },
-      { label: "🌧️ low", pct: 30, color: "#9AACBB", count: 1 },
-      { label: "✨ grateful", pct: 20, color: "#C9B46A", count: 1 },
-    ],
-    inviteCode: "miwi/ldc·7b3e",
-  },
-  {
-    id: "c3",
-    emoji: "🌙",
-    bg: "#EDE8F5",
-    name: "Just us two",
-    description: "A private space for two. Created Feb 2026.",
-    newPosts: 0,
-    members: [
-      {
-        id: "u1",
-        initial: "S",
-        color: "#C96A3A",
-        name: "sofía",
-        mood: "🌿 calm · posted 2m ago",
-        you: true,
-      },
-      {
-        id: "u9",
-        initial: "T",
-        color: "#7A6A9E",
-        name: "theo",
-        mood: "🌙 sleepy · posted 4h ago",
-      },
-    ],
-    moodBreakdown: [
-      { label: "🌿 calm", pct: 50, color: "#A0B89A", count: 1 },
-      { label: "🌙 sleepy", pct: 50, color: "#9A9EC4", count: 1 },
-    ],
-    inviteCode: "miwi/jut·c4d1",
-  },
-];
+      circle.description ||
+      `${members.length} ${members.length === 1 ? "member" : "members"}.`,
+    newPosts,
+    members,
+    moodBreakdown,
+    inviteCode: circle.invite_code ?? "—",
+  };
+}
 
 /* ─── Small bits ─────────────────────────────────────────────── */
 
@@ -298,7 +278,7 @@ function MoodRow({ label, pct, color, count }) {
         marginBottom: 8,
       }}
     >
-      <div style={{ fontSize: 12, color: "#5A3A28", width: 80, flexShrink: 0 }}>
+      <div style={{ fontSize: 12, color: "#5A3A28", width: 90, flexShrink: 0 }}>
         {label}
       </div>
       <div
@@ -365,7 +345,7 @@ function ActionButton({ primary, icon, children, onClick }) {
 
 /* ─── Right detail panel ─────────────────────────────────────── */
 
-function CirclePanel({ circle, onPost, onSettings, onCopyInvite }) {
+function CirclePanel({ circle, onPost, onCopyInvite }) {
   if (!circle) {
     return (
       <div
@@ -476,7 +456,7 @@ function CirclePanel({ circle, onPost, onSettings, onCopyInvite }) {
             fontWeight: 500,
           }}
         >
-          Invite link · expires never
+          Invite code
         </div>
         <div
           style={{
@@ -492,6 +472,9 @@ function CirclePanel({ circle, onPost, onSettings, onCopyInvite }) {
               color: "#5A3A28",
               fontFamily: "monospace",
               letterSpacing: "0.1em",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
             }}
           >
             {circle.inviteCode}
@@ -508,6 +491,7 @@ function CirclePanel({ circle, onPost, onSettings, onCopyInvite }) {
               display: "flex",
               alignItems: "center",
               gap: 4,
+              flexShrink: 0,
             }}
           >
             <i className="ti ti-copy" style={{ fontSize: 14 }} /> Copy
@@ -528,9 +512,6 @@ function CirclePanel({ circle, onPost, onSettings, onCopyInvite }) {
         <ActionButton primary icon="pencil" onClick={() => onPost?.(circle)}>
           Post to this circle
         </ActionButton>
-        <ActionButton icon="settings" onClick={() => onSettings?.(circle)}>
-          Circle settings
-        </ActionButton>
       </div>
     </div>
   );
@@ -538,7 +519,7 @@ function CirclePanel({ circle, onPost, onSettings, onCopyInvite }) {
 
 /* ─── Empty state (no circles at all) ───────────────────────── */
 
-function EmptyCircles({ onCreate }) {
+function EmptyCircles() {
   return (
     <div
       style={{
@@ -572,32 +553,22 @@ function EmptyCircles({ onCreate }) {
         circles are small private groups — invite up to 10 people who actually
         matter to you
       </div>
-      <button
-        onClick={onCreate}
-        style={{
-          marginTop: 16,
-          padding: "12px 24px",
-          borderRadius: 999,
-          background: "#C96A3A",
-          color: "#F9F4EF",
-          border: "none",
-          fontSize: 14,
-          fontWeight: 600,
-          cursor: "pointer",
-        }}
-      >
-        create a circle
-      </button>
     </div>
   );
 }
 
 /* ─── Page ────────────────────────────────────────────────────── */
 
-export default function Circles({ circles = MOCK_CIRCLES }) {
+export default function Circles() {
+  const { user } = useAuth();
+  const { data: rawCircles = [], isLoading: loadingCircles } = useCircles();
+  const { data: posts = [], isLoading: loadingPosts } = useFeed();
+
   const [activeTab, setActiveTab] = useState("circles");
   const [tab, setTab] = useState("mine"); // "mine" | "invites"
-  const [selectedId, setSelectedId] = useState(circles[0]?.id ?? null);
+  const [selectedId, setSelectedId] = useState(null);
+  const [composing, setComposing] = useState(false);
+  const [composeCircleId, setComposeCircleId] = useState(null);
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" ? window.innerWidth < 768 : false,
   );
@@ -608,10 +579,29 @@ export default function Circles({ circles = MOCK_CIRCLES }) {
     return () => window.removeEventListener("resize", handle);
   }, []);
 
+  const circles = useMemo(
+    () =>
+      rawCircles.map((c, idx) => buildDisplayCircle(c, posts, user?.id, idx)),
+    [rawCircles, posts, user?.id],
+  );
+
+  // Keep a selection once data loads, defaulting to the first circle
+  useEffect(() => {
+    if (!selectedId && circles.length > 0) {
+      setSelectedId(circles[0].id);
+    }
+  }, [circles, selectedId]);
+
   const selected = circles.find((c) => c.id === selectedId) ?? null;
+  const loading = loadingCircles || loadingPosts;
 
   function handleCopyInvite(code) {
     if (navigator?.clipboard) navigator.clipboard.writeText(code);
+  }
+
+  function handlePostToCircle(circle) {
+    setComposeCircleId(circle.id);
+    setComposing(true);
   }
 
   return (
@@ -631,7 +621,10 @@ export default function Circles({ circles = MOCK_CIRCLES }) {
         <Navbar
           active={activeTab}
           setActive={setActiveTab}
-          onCompose={() => {}}
+          onCompose={() => {
+            setComposeCircleId(null);
+            setComposing(true);
+          }}
         />
 
         {/* Center column */}
@@ -666,30 +659,6 @@ export default function Circles({ circles = MOCK_CIRCLES }) {
             >
               Circles
             </span>
-            <button
-              style={{
-                marginLeft: "auto",
-                padding: "8px 16px",
-                borderRadius: 999,
-                border: "none",
-                background: "#F0E5DB",
-                color: "#7A4A2A",
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.background = "#E8D5C4")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.background = "#F0E5DB")
-              }
-            >
-              <i className="ti ti-plus" style={{ fontSize: 15 }} /> New circle
-            </button>
           </div>
 
           {/* Tabs */}
@@ -742,8 +711,19 @@ export default function Circles({ circles = MOCK_CIRCLES }) {
               >
                 no pending invites
               </div>
+            ) : loading ? (
+              <div
+                style={{
+                  padding: "40px 20px",
+                  textAlign: "center",
+                  fontSize: 13,
+                  color: "#8A7060",
+                }}
+              >
+                loading circles…
+              </div>
             ) : circles.length === 0 ? (
-              <EmptyCircles onCreate={() => {}} />
+              <EmptyCircles />
             ) : (
               <div style={{ display: "flex", flexDirection: "column" }}>
                 {circles.map((c) => (
@@ -754,54 +734,6 @@ export default function Circles({ circles = MOCK_CIRCLES }) {
                     onClick={() => setSelectedId(c.id)}
                   />
                 ))}
-
-                {/* Create-circle row */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 14,
-                    padding: "14px 20px",
-                    borderBottom: "1px solid #EDE3DA",
-                    opacity: 0.6,
-                    cursor: "pointer",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 46,
-                      height: 46,
-                      borderRadius: 16,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: "#F0F0F0",
-                      border: "2px dashed #E0D8D0",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <i
-                      className="ti ti-plus"
-                      style={{ fontSize: 20, color: "#B09A8A" }}
-                    />
-                  </div>
-                  <div>
-                    <div
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: "#8A7060",
-                      }}
-                    >
-                      Create a circle
-                    </div>
-                    <div
-                      style={{ fontSize: 12, color: "#8A7060", marginTop: 2 }}
-                    >
-                      Invite up to 10 people
-                    </div>
-                  </div>
-                </div>
               </div>
             )}
           </div>
@@ -811,10 +743,18 @@ export default function Circles({ circles = MOCK_CIRCLES }) {
         {!isMobile && (
           <CirclePanel
             circle={tab === "mine" ? selected : null}
+            onPost={handlePostToCircle}
             onCopyInvite={handleCopyInvite}
           />
         )}
       </div>
+
+      {composing && (
+        <ComposeSheet
+          initialCircleId={composeCircleId}
+          onClose={() => setComposing(false)}
+        />
+      )}
     </>
   );
 }

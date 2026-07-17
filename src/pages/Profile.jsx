@@ -9,6 +9,15 @@ import { supabase } from "../lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 
+// Add this helper function outside the component
+function extractAvatarStoragePath(publicUrl) {
+  if (!publicUrl) return null;
+  const marker = "/avatars/";
+  const idx = publicUrl.indexOf(marker);
+  if (idx === -1) return null;
+  return publicUrl.slice(idx + marker.length).split("?")[0];
+}
+
 // ─── Edit Profile Sheet ───────────────────────────────────────────────────────
 
 function EditProfileSheet({ profile, onClose }) {
@@ -133,22 +142,45 @@ function EditProfileSheet({ profile, onClose }) {
           return;
         }
 
+        // Force a fresh, valid token right before a storage write — avoids
+        // uploads silently failing RLS because the cached session had expired.
+        const { error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError) {
+          setError("Your session expired — please log in again.");
+          setSaving(false);
+          return;
+        }
+
+        // Give every upload a unique path so this is always a plain INSERT —
+        // never an UPDATE/upsert, which has been unreliable against RLS here.
         const ext = avatarFile.name.split(".").pop().toLowerCase();
-        // Path matches schema: avatars/{user_id}/avatar.{ext}
-        // RLS policy checks foldername = user_id, so the folder is required
-        const path = `${user.id}/avatar.${ext}`;
+        const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+
         const { error: uploadError } = await supabase.storage
           .from("avatars")
           .upload(path, avatarFile, {
-            upsert: true,
+            upsert: false,
             contentType: avatarFile.type,
           });
+
         if (uploadError) throw uploadError;
 
         const { data: urlData } = supabase.storage
           .from("avatars")
           .getPublicUrl(path);
+
+        // unique path already busts any cache, no ?v= needed
         avatar_url = urlData.publicUrl;
+
+        // Best-effort cleanup of the previous avatar file — if this fails, don't
+        // block saving the profile over it, just leave the old file orphaned.
+        const oldPath = extractAvatarStoragePath(profile.avatar_url);
+        if (oldPath && oldPath !== path) {
+          supabase.storage
+            .from("avatars")
+            .remove([oldPath])
+            .catch(() => {});
+        }
       }
 
       const { error: updateError } = await supabase

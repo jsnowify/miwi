@@ -5,9 +5,6 @@ import ComposeSheet from "../components/ComposeSheet";
 import MessagesPanel from "../components/MessagesPanel";
 import { useFeed } from "../hooks/useFeed";
 
-const SIDEBAR_EXPANDED_W = 300;
-const SIDEBAR_COLLAPSED_W = 64;
-
 const AVATAR_COLORS = [
   "#C96A3A",
   "#8B5E3C",
@@ -16,12 +13,9 @@ const AVATAR_COLORS = [
   "#9E7A8A",
   "#6A8A9E",
   "#9E6A8A",
-  "#8A9E6A",
   "#7A6A9E",
 ];
 
-// Deterministic color per user id so the same person always gets the same
-// avatar color across the app, without needing a color column in the DB.
 function colorForId(id) {
   if (!id) return AVATAR_COLORS[0];
   let hash = 0;
@@ -117,6 +111,8 @@ function Post({ post, visible }) {
     count,
   }));
 
+  const circleName = post.circles?.name || post.circle?.name;
+
   return (
     <div
       style={{
@@ -133,6 +129,7 @@ function Post({ post, visible }) {
       <PersonAvatar author={post.author} size={40} ring={false} />
 
       <div style={{ flex: 1, minWidth: 0 }}>
+        {/* Header: Author + Circle + Mood + Time */}
         <div
           style={{
             display: "flex",
@@ -142,9 +139,26 @@ function Post({ post, visible }) {
             marginBottom: 4,
           }}
         >
-          <span style={{ fontWeight: 600, fontSize: 14, color: "#1C1410" }}>
-            {post.author?.display_name ?? "someone"}
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontWeight: 600, fontSize: 14, color: "#1C1410" }}>
+              {post.author?.username ?? "someone"}
+            </span>
+
+            {circleName && (
+              <>
+                <i
+                  className="ti ti-chevron-right"
+                  style={{ fontSize: 14, color: "#8A7060" }}
+                />
+                <span
+                  style={{ fontSize: 14, fontWeight: 400, color: "#8A7060" }}
+                >
+                  {circleName}
+                </span>
+              </>
+            )}
+          </div>
+
           {post.mood && (
             <span
               style={{
@@ -163,6 +177,7 @@ function Post({ post, visible }) {
           </span>
         </div>
 
+        {/* Caption */}
         {post.caption && (
           <p
             style={{
@@ -177,6 +192,90 @@ function Post({ post, visible }) {
           </p>
         )}
 
+        {/* Media Renderer: Image */}
+        {post.media_attachment?.type === "image" && (
+          <div style={{ marginTop: 12 }}>
+            <img
+              src={post.media_attachment.url}
+              alt="Post attachment"
+              style={{
+                width: "100%",
+                maxHeight: 400,
+                objectFit: "cover",
+                borderRadius: 14,
+                border: "1px solid #EDE3DA",
+              }}
+            />
+          </div>
+        )}
+
+        {/* Media Renderer: Audio/Song */}
+        {post.media_attachment?.type === "song" &&
+          post.media_attachment.preview_url && (
+            <div
+              style={{
+                marginTop: 12,
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                padding: 12,
+                background: "#F5EDE3",
+                borderRadius: 14,
+                border: "1px solid #EDE3DA",
+              }}
+            >
+              <img
+                src={post.media_attachment.cover_url}
+                alt="Song cover"
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 8,
+                  objectFit: "cover",
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "#1C1410",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {post.media_attachment.title}
+                </div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "#8A7060",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    marginBottom: 6,
+                  }}
+                >
+                  {post.media_attachment.artist}
+                </div>
+
+                <audio
+                  controls
+                  src={post.media_attachment.preview_url}
+                  style={{
+                    height: 32,
+                    width: "100%",
+                    maxWidth: 250,
+                    outline: "none",
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+        {/* Actions bar */}
         <div
           style={{
             display: "flex",
@@ -233,6 +332,7 @@ function Post({ post, visible }) {
 }
 
 function EmptyFeed() {
+  const navigate = useNavigate();
   return (
     <div
       style={{
@@ -266,6 +366,23 @@ function EmptyFeed() {
         join or create a circle, then share how you're feeling to get things
         going.
       </div>
+
+      <button
+        onClick={() => navigate("/circles")}
+        style={{
+          marginTop: 12,
+          padding: "10px 20px",
+          borderRadius: 999,
+          border: "none",
+          background: "#C96A3A",
+          color: "#F9F4EF",
+          fontSize: 13,
+          fontWeight: 600,
+          cursor: "pointer",
+        }}
+      >
+        Browse Circles
+      </button>
     </div>
   );
 }
@@ -284,7 +401,6 @@ export default function Feed() {
   const [isDesktopWide, setIsDesktopWide] = useState(
     typeof window !== "undefined" ? window.innerWidth >= 1280 : false,
   );
-  const [sidebarExpanded, setSidebarExpanded] = useState(true);
 
   useEffect(() => {
     const handle = () => {
@@ -295,8 +411,6 @@ export default function Feed() {
     return () => window.removeEventListener("resize", handle);
   }, []);
 
-  // Gentle fade-in once real data has arrived, echoing the old staggered
-  // mock animation without needing per-item timers.
   useEffect(() => {
     if (!isLoading) {
       const t = setTimeout(() => setVisible(true), 80);
@@ -304,7 +418,6 @@ export default function Feed() {
     }
   }, [isLoading]);
 
-  // One story ring per author, "new" if their latest post was in the last 24h
   const storyAuthors = useMemo(() => {
     const seen = new Map();
     for (const post of posts) {
@@ -449,21 +562,7 @@ export default function Feed() {
           </div>
         </div>
 
-        {/* Right messages sidebar */}
-        {!isMobile && (
-          <div
-            style={{
-              width: sidebarExpanded ? SIDEBAR_EXPANDED_W : SIDEBAR_COLLAPSED_W,
-              flexShrink: 0,
-              transition: "width 0.25s ease",
-            }}
-          >
-            <MessagesPanel
-              variant="sidebar"
-              onExpandChange={setSidebarExpanded}
-            />
-          </div>
-        )}
+        {!isMobile && <MessagesPanel variant="sidebar" />}
       </div>
 
       {composing && <ComposeSheet onClose={() => setComposing(false)} />}

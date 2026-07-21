@@ -25,11 +25,12 @@ export default function ComposeSheet({ onClose, initialCircleId }) {
   const [mediaFile, setMediaFile] = useState(null);
   const [mediaPreview, setMediaPreview] = useState(null);
 
-  // Spotify Search States
+  // Song Search States (iTunes Search API — zero-auth, has 30s preview_url)
   const [showMusicSearch, setShowMusicSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState("");
   const [selectedSong, setSelectedSong] = useState(null);
 
   const { data: circles = [], isLoading: loadingCircles } = useCircles();
@@ -46,10 +47,24 @@ export default function ComposeSheet({ onClose, initialCircleId }) {
     }
   }, [circles, initialCircleId, circleId]);
 
+  // Revoke the media preview blob URL on unmount / when it changes,
+  // so we don't leak memory across repeated picks.
+  useEffect(() => {
+    return () => {
+      if (mediaPreview?.startsWith("blob:")) {
+        URL.revokeObjectURL(mediaPreview);
+      }
+    };
+  }, [mediaPreview]);
+
   // Handle Image Selection
   function handleImagePick(e) {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (mediaPreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(mediaPreview);
+    }
 
     // Media exclusivity: clear song if image is picked
     setSelectedSong(null);
@@ -57,50 +72,61 @@ export default function ComposeSheet({ onClose, initialCircleId }) {
     setMediaPreview(URL.createObjectURL(file));
   }
 
-  // Handle Spotify Search (Mocked - wire to your backend)
+  // Song search via the iTunes Search API
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
+      setSearchError("");
       return;
     }
 
+    const controller = new AbortController();
     const debounce = setTimeout(async () => {
       setIsSearching(true);
+      setSearchError("");
       try {
-        // TODO: Replace with your actual Spotify/iTunes API call.
-        // NOTE: The open iTunes Search API is a great zero-auth alternative to Spotify
-        // that natively returns 30-second preview_urls:
-        // fetch(`https://itunes.apple.com/search?term=${searchQuery}&entity=song&limit=4`)
+        const res = await fetch(
+          `https://itunes.apple.com/search?term=${encodeURIComponent(
+            searchQuery,
+          )}&entity=song&limit=8`,
+          { signal: controller.signal },
+        );
 
-        // Mock data for UI testing
-        setSearchResults([
-          {
-            track_id: "1",
-            title: "Pink + White",
-            artist: "Frank Ocean",
-            cover_url: "https://placehold.co/100x100/F0E5DB/8A7060?text=FO",
-            preview_url: "mock-url-1",
-          },
-          {
-            track_id: "2",
-            title: "Perfect",
-            artist: "Ed Sheeran",
-            cover_url: "https://placehold.co/100x100/F0E5DB/8A7060?text=ES",
-            preview_url: "mock-url-2",
-          },
-        ]);
+        if (!res.ok) throw new Error("Search request failed.");
+
+        const data = await res.json();
+
+        const mapped = (data.results ?? []).map((track) => ({
+          track_id: String(track.trackId),
+          title: track.trackName,
+          artist: track.artistName,
+          cover_url: track.artworkUrl100,
+          preview_url: track.previewUrl,
+        }));
+
+        setSearchResults(mapped);
       } catch (err) {
-        console.error(err);
+        if (err.name !== "AbortError") {
+          console.error(err);
+          setSearchError("Couldn't search right now. Try again.");
+          setSearchResults([]);
+        }
       } finally {
         setIsSearching(false);
       }
     }, 500);
 
-    return () => clearTimeout(debounce);
+    return () => {
+      clearTimeout(debounce);
+      controller.abort();
+    };
   }, [searchQuery]);
 
   function handleSongPick(song) {
     // Media exclusivity: clear image if song is picked
+    if (mediaPreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(mediaPreview);
+    }
     setMediaFile(null);
     setMediaPreview(null);
     setSelectedSong(song);
@@ -109,6 +135,9 @@ export default function ComposeSheet({ onClose, initialCircleId }) {
   }
 
   function clearMedia() {
+    if (mediaPreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(mediaPreview);
+    }
     setMediaFile(null);
     setMediaPreview(null);
     setSelectedSong(null);
@@ -122,8 +151,6 @@ export default function ComposeSheet({ onClose, initialCircleId }) {
       return;
     }
 
-    // We pass the raw file and song data to the hook.
-    // The hook will handle the Supabase storage upload and JSONB formatting.
     createPost(
       {
         circleId,
@@ -135,7 +162,19 @@ export default function ComposeSheet({ onClose, initialCircleId }) {
       },
       {
         onSuccess: () => onClose(),
-        onError: (err) => setError(err.message ?? "Something went wrong."),
+        onError: (err) => {
+          console.error("Post creation failed:", err);
+
+          // GRACEFUL ERROR HANDLING UX
+          const isTechnicalError =
+            err.message?.includes("schema cache") ||
+            err.message?.includes("column");
+          setError(
+            isTechnicalError
+              ? "We hit a snag connecting to the server. Please try again."
+              : (err.message ?? "Something went wrong."),
+          );
+        },
       },
     );
   }
@@ -326,7 +365,7 @@ export default function ComposeSheet({ onClose, initialCircleId }) {
         </div>
       </div>
 
-      {/* Spotify Search Popover */}
+      {/* Song Search Popover */}
       {showMusicSearch && (
         <div className="fixed inset-0 z-[105] flex items-center justify-center bg-black/20 backdrop-blur-sm p-4">
           <div className="w-full max-w-sm bg-[#FDFAF7] rounded-2xl shadow-xl border border-[#EDE3DA] overflow-hidden flex flex-col max-h-[70vh]">
@@ -351,6 +390,10 @@ export default function ComposeSheet({ onClose, initialCircleId }) {
               {isSearching ? (
                 <div className="p-4 text-center text-sm text-[#B09A8A]">
                   Searching...
+                </div>
+              ) : searchError ? (
+                <div className="p-4 text-center text-sm text-[#C96A3A]">
+                  {searchError}
                 </div>
               ) : searchResults.length > 0 ? (
                 searchResults.map((song) => (

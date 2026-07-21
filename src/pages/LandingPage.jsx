@@ -115,7 +115,7 @@ export default function LandingPage() {
           }}
         />
 
-        <main className="flex-1 flex flex-col items-center justify-center px-6 relative z-10 w-full max-w-[420px] mx-auto py-6">
+        <main className="flex-1 flex flex-col items-center justify-center px-6 relative z-10 w-full max-w-105 mx-auto py-6">
           {/* Header */}
           <div className="flex flex-col items-center text-center mb-6 w-full">
             <span

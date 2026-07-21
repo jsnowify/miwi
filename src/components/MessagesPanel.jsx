@@ -1,5 +1,33 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { MOCK_DMS, MOCK_GROUPS } from "./mockMessages";
+import { useCircles } from "../hooks/useCircles";
+import { useAuth } from "../context/AuthContext";
+
+// Single source of truth for the sidebar widths. Previously these were
+// declared separately in both Feed.jsx and here — if one ever drifted
+// from the other, the outer wrapper (in Feed.jsx) and this panel's own
+// root width would briefly disagree and show as a margin/gap glitch
+// during the expand/collapse transition. Export them so Feed.jsx (or
+// any other consumer) imports instead of re-declaring.
+export const SIDEBAR_EXPANDED_W = 300;
+export const SIDEBAR_COLLAPSED_W = 64;
+
+const CONTACT_COLORS = [
+  "#C96A3A",
+  "#8B5E3C",
+  "#B07D62",
+  "#7A9E8A",
+  "#9E7A8A",
+  "#6A8A9E",
+];
+
+function colorForId(id) {
+  if (!id) return CONTACT_COLORS[0];
+  let hash = 0;
+  for (let i = 0; i < id.length; i++)
+    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  return CONTACT_COLORS[Math.abs(hash) % CONTACT_COLORS.length];
+}
 
 /* ── Avatar ── */
 function Avatar({ label, color, size = 44, rounded = false }) {
@@ -497,6 +525,167 @@ function EmptySearch({ query }) {
   );
 }
 
+/* ── New Message modal ──
+   Fixes the "creating a message" bug: previously the FAB/MobileFAB had
+   onClick={() => {}} — clicking "new message" did nothing at all. This
+   opens a picker of people from your circles (deduped, excluding
+   yourself) and hands the chosen person back as a conversation. */
+function NewMessageModal({ onClose, onPick }) {
+  const { user } = useAuth();
+  const { data: circles = [], isLoading } = useCircles();
+
+  const contacts = useMemo(() => {
+    const seen = new Map();
+    for (const circle of circles) {
+      for (const cm of circle.circle_members ?? []) {
+        const profile = cm.profiles;
+        if (!profile || profile.id === user?.id || seen.has(profile.id)) {
+          continue;
+        }
+        seen.set(profile.id, profile);
+      }
+    }
+    return Array.from(seen.values());
+  }, [circles, user?.id]);
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 110,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "rgba(0,0,0,0.2)",
+        backdropFilter: "blur(4px)",
+        padding: 16,
+      }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 360,
+          background: "#FDFAF7",
+          borderRadius: 20,
+          border: "1px solid #EDE3DA",
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+          maxHeight: "70vh",
+        }}
+      >
+        <div
+          style={{
+            padding: "16px 18px",
+            borderBottom: "1px solid #EDE3DA",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexShrink: 0,
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "'DM Serif Display', Georgia, serif",
+              fontSize: 17,
+              color: "#1C1410",
+            }}
+          >
+            New message
+          </span>
+          <button
+            onClick={onClose}
+            style={{
+              border: "none",
+              background: "none",
+              cursor: "pointer",
+              color: "#8A7060",
+              display: "flex",
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M18 6 6 18M6 6l12 12"
+                stroke="#8A7060"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        </div>
+        <div style={{ overflowY: "auto", padding: 8 }}>
+          {isLoading ? (
+            <div
+              style={{
+                padding: 24,
+                textAlign: "center",
+                fontSize: 13,
+                color: "#8A7060",
+              }}
+            >
+              loading your circles…
+            </div>
+          ) : contacts.length === 0 ? (
+            <div
+              style={{
+                padding: 24,
+                textAlign: "center",
+                fontSize: 13,
+                color: "#8A7060",
+              }}
+            >
+              join a circle first to message someone
+            </div>
+          ) : (
+            contacts.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => onPick(c)}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "10px",
+                  border: "none",
+                  background: "transparent",
+                  cursor: "pointer",
+                  borderRadius: 12,
+                  textAlign: "left",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "#F5EDE3")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "transparent")
+                }
+              >
+                <Avatar
+                  label={c.display_name?.charAt(0).toUpperCase() ?? "?"}
+                  color={colorForId(c.id)}
+                  size={38}
+                />
+                <div style={{ minWidth: 0 }}>
+                  <div
+                    style={{ fontSize: 14, fontWeight: 600, color: "#1C1410" }}
+                  >
+                    {c.display_name}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#8A7060" }}>
+                    @{c.username}
+                  </div>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Main export ── */
 export default function MessagesPanel({
   variant = "sidebar",
@@ -508,6 +697,7 @@ export default function MessagesPanel({
   const [search, setSearch] = useState("");
   const [isExpanded, setIsExpanded] = useState(true);
   const [sidebarSelected, setSidebarSelected] = useState(null);
+  const [showNewMessage, setShowNewMessage] = useState(false);
 
   const dmUnread = MOCK_DMS.reduce((s, d) => s + (d.unread > 0 ? 1 : 0), 0);
   const groupUnread = MOCK_GROUPS.reduce(
@@ -541,6 +731,23 @@ export default function MessagesPanel({
     } else {
       setSidebarSelected(item.id === sidebarSelected ? null : item.id);
     }
+  }
+
+  // Person picked from the New Message modal -> normalize into the same
+  // shape ConvoRow/ChatView expect, then route it through the normal
+  // selection path (same as clicking an existing conversation).
+  function handleNewMessagePick(profile) {
+    const contact = {
+      id: `new-${profile.id}`,
+      name: profile.display_name,
+      avatar: profile.display_name?.charAt(0).toUpperCase() ?? "?",
+      avatarColor: colorForId(profile.id),
+      preview: "",
+      time: "now",
+      unread: 0,
+    };
+    setShowNewMessage(false);
+    handleSelect(contact);
   }
 
   const body = (
@@ -614,15 +821,23 @@ export default function MessagesPanel({
           </span>
         </div>
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>{body}</div>
-        <MobileFAB onClick={() => {}} />
+        <MobileFAB onClick={() => setShowNewMessage(true)} />
+        {showNewMessage && (
+          <NewMessageModal
+            onClose={() => setShowNewMessage(false)}
+            onPick={handleNewMessagePick}
+          />
+        )}
       </div>
     );
   }
 
-  /* ── sidebar variant ── */
-  const SIDEBAR_EXPANDED_W = 300;
-  const SIDEBAR_COLLAPSED_W = 64;
-
+  /* ── sidebar variant ──
+     Width is now driven entirely by this component (SIDEBAR_EXPANDED_W /
+     SIDEBAR_COLLAPSED_W, exported above). The parent (Feed.jsx) no longer
+     declares its own width for the wrapping div — it just reserves a
+     flex slot and lets this element's own width + transition do the
+     animating, so there's only ever one source of truth. */
   return (
     <div
       style={{
@@ -713,7 +928,7 @@ export default function MessagesPanel({
           }}
         >
           {body}
-          <FAB onClick={() => {}} />
+          <FAB onClick={() => setShowNewMessage(true)} />
         </div>
       ) : (
         // ── Collapsed rail — paddingTop: 8 only, header already pushes content down ──
@@ -741,7 +956,7 @@ export default function MessagesPanel({
             />
           ))}
           <FAB
-            onClick={() => {}}
+            onClick={() => setShowNewMessage(true)}
             style={{
               position: "absolute",
               right: "50%",
@@ -749,6 +964,13 @@ export default function MessagesPanel({
             }}
           />
         </div>
+      )}
+
+      {showNewMessage && (
+        <NewMessageModal
+          onClose={() => setShowNewMessage(false)}
+          onPick={handleNewMessagePick}
+        />
       )}
     </div>
   );

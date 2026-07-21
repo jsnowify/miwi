@@ -1,10 +1,10 @@
-import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useMemo } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import Navbar from "../components/Navbar";
 import SettingsSheet from "../components/SettingsSheet";
 import EditProfileSheet from "../components/profile/EditProfileSheet";
-import ComposeSheet from "../components/ComposeSheet"; // 1. Import the sheet
+import ComposeSheet from "../components/ComposeSheet";
 import PostCard from "../components/profile/PostCard";
 import {
   ProfileSkeleton,
@@ -13,23 +13,39 @@ import {
   StatPill,
   CircleChip,
 } from "../components/profile/ProfileUI";
-import { getInitial } from "../lib/utils";
 import { useProfile } from "../hooks/useProfile";
 import { useFeed } from "../hooks/useFeed";
 import { useCircles } from "../hooks/useCircles";
 import { useAuth } from "../context/AuthContext";
 
+// Map routes -> Navbar tab keys, derived once outside the component.
+const ROUTE_TAB_MAP = [
+  { prefix: "/feed", tab: "home" },
+  { prefix: "/circles", tab: "circles" },
+  { prefix: "/messages", tab: "messages" },
+  { prefix: "/activity", tab: "activity" },
+  { prefix: "/profile", tab: "profile" },
+];
+
+function getActiveTabFromPath(pathname) {
+  const match = ROUTE_TAB_MAP.find((r) => pathname.startsWith(r.prefix));
+  return match?.tab ?? "profile";
+}
+
 export default function Profile() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("profile");
+  const location = useLocation();
   const [tab, setTab] = useState("posts");
+
+  // Derived from the URL instead of local state, so it never drifts
+  // out of sync with back/forward navigation.
+  const activeTab = getActiveTabFromPath(location.pathname);
 
   // Sheet states
   const [showSettings, setShowSettings] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
-  const [showCompose, setShowCompose] = useState(false); // 2. Add compose state
+  const [showCompose, setShowCompose] = useState(false);
 
-  // 3. Update handler to toggle state instead of navigating
   const handleCompose = () => setShowCompose(true);
 
   const { data: profile, isLoading: loadingProfile } = useProfile();
@@ -53,7 +69,8 @@ export default function Profile() {
 
   if (!profile) return null;
 
-  const initial = getInitial(profile.display_name, profile.handle);
+  // Use the precomputed initial from useProfile instead of recomputing it.
+  const initial = profile.initial;
 
   return (
     <>
@@ -62,11 +79,11 @@ export default function Profile() {
         <Navbar
           active={activeTab}
           setActive={(t) => {
-            setActiveTab(t);
             if (t === "home") navigate("/feed");
             if (t === "circles") navigate("/circles");
             if (t === "messages") navigate("/messages");
             if (t === "activity") navigate("/activity");
+            if (t === "profile") navigate("/profile");
           }}
           onCompose={handleCompose}
         />
@@ -171,7 +188,7 @@ export default function Profile() {
                     <EmptyTab
                       message="No posts yet. Share how you're feeling!"
                       actionLabel="Create a Post"
-                      onAction={handleCompose} // This now triggers setShowCompose(true)
+                      onAction={handleCompose}
                     />
                   ) : (
                     myPosts.map((post) => (

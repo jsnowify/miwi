@@ -27,6 +27,7 @@ export function useFeed() {
           `
           *,
           author:profiles!posts_author_id_fkey ( id, display_name, username, avatar_url ),
+          circles ( name ),
           reactions ( reaction, user_id )
         `,
         )
@@ -110,6 +111,7 @@ export function useCreatePost() {
           `
           *,
           author:profiles!posts_author_id_fkey ( id, display_name, username, avatar_url ),
+          circles ( name ),
           reactions ( reaction, user_id )
         `,
         )

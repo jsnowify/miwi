@@ -72,6 +72,16 @@ export default function EditProfileSheet({ profile, onClose }) {
     };
   }, [form.username, currentUsername, user.id]);
 
+  // Revoke any blob: preview URL we created so we don't leak memory if the
+  // user picks multiple avatars before saving, or closes without saving.
+  useEffect(() => {
+    return () => {
+      if (avatarPreview?.startsWith("blob:")) {
+        URL.revokeObjectURL(avatarPreview);
+      }
+    };
+  }, [avatarPreview]);
+
   function set(field) {
     return (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
   }
@@ -79,16 +89,27 @@ export default function EditProfileSheet({ profile, onClose }) {
   function handleAvatarChange(e) {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Revoke the previous blob preview (if any) before creating a new one.
+    if (avatarPreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(avatarPreview);
+    }
+
     setAvatarFile(file);
     setAvatarPreview(URL.createObjectURL(file));
   }
 
   const usernameOk =
     usernameStatus === "unchanged" || usernameStatus === "available";
+  const usernamePending = usernameStatus === "checking";
 
   async function handleSave() {
     if (!form.display_name.trim() || !form.username.trim()) {
       toast.error("Name and username cannot be empty.");
+      return;
+    }
+    if (usernamePending) {
+      toast.error("Still checking that username, hang on a sec.");
       return;
     }
     if (usernameStatus === "taken" || usernameStatus === "invalid") {
@@ -128,7 +149,17 @@ export default function EditProfileSheet({ profile, onClose }) {
           supabase.storage
             .from("avatars")
             .remove([oldPath])
-            .catch(() => {});
+            .then(({ error: removeError }) => {
+              if (removeError) {
+                console.warn(
+                  `Failed to remove old avatar at "${oldPath}":`,
+                  removeError,
+                );
+              }
+            })
+            .catch((err) =>
+              console.warn(`Unexpected error removing old avatar:`, err),
+            );
         }
       }
 
@@ -263,6 +294,11 @@ export default function EditProfileSheet({ profile, onClose }) {
                     : "border-[#E8D5C4] focus:border-[#1C1410]"
               }`}
             />
+            {usernameStatus === "checking" && (
+              <p className="text-xs text-[#8A7060] mt-1">
+                Checking availability…
+              </p>
+            )}
             {usernameStatus === "available" && (
               <p className="text-xs text-[#6BAE8A] mt-1">
                 @{form.username} is available!
@@ -300,10 +336,14 @@ export default function EditProfileSheet({ profile, onClose }) {
             </button>
             <button
               onClick={handleSave}
-              disabled={saving || !usernameOk}
+              disabled={saving || !usernameOk || usernamePending}
               className="flex-[2] py-3 rounded-full bg-[#C96A3A] text-[#F9F4EF] text-sm font-semibold disabled:bg-[#E8D5C4] disabled:text-[#B09A8A] transition"
             >
-              {saving ? "Saving…" : "Save changes"}
+              {saving
+                ? "Saving…"
+                : usernamePending
+                  ? "Checking…"
+                  : "Save changes"}
             </button>
           </div>
         </div>

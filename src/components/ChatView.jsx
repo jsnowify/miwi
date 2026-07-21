@@ -1,4 +1,53 @@
+import { useState, useRef, useEffect } from "react";
+
+// NOTE: there's no `messages` table/hook wired up yet in this codebase, so
+// this keeps sent messages in local component state — good enough to make
+// the UI actually functional. Once a real messages table + useMessages()
+// hook exists, swap the local `messages` state + `sendLocalMessage` for
+// that hook's data + mutation and the rest of this component (rendering,
+// scroll-to-bottom, Enter-to-send) doesn't need to change.
 export default function ChatView({ contact, onBack, isMobile }) {
+  const [messages, setMessages] = useState([]);
+  const [draft, setDraft] = useState("");
+  const scrollRef = useRef(null);
+
+  // Reset the thread when switching contacts so messages from a previous
+  // conversation don't bleed into the next one.
+  useEffect(() => {
+    setMessages([]);
+    setDraft("");
+  }, [contact?.id]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+  }, [messages]);
+
+  function handleSend() {
+    const text = draft.trim();
+    if (!text) return;
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `${Date.now()}-${Math.random()}`,
+        from: "me",
+        text,
+        time: new Date().toLocaleTimeString([], {
+          hour: "numeric",
+          minute: "2-digit",
+        }),
+      },
+    ]);
+    setDraft("");
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  }
+
   return (
     <div
       style={{
@@ -127,58 +176,100 @@ export default function ChatView({ contact, onBack, isMobile }) {
         </button>
       </div>
 
-      {/* Messages area — empty state */}
+      {/* Messages area */}
       <div
+        ref={scrollRef}
         style={{
           flex: 1,
           overflowY: "auto",
           padding: "24px 20px",
           display: "flex",
           flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
           gap: 8,
-          textAlign: "center",
         }}
       >
-        <div
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: contact.rounded ? 18 : "50%",
-            background: contact.avatarColor,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#F9F4EF",
-            fontSize: 22,
-            fontFamily: "'DM Serif Display', Georgia, serif",
-            marginBottom: 8,
-          }}
-        >
-          {contact.avatar}
-        </div>
-        <div
-          style={{
-            fontFamily: "'DM Serif Display', Georgia, serif",
-            fontSize: 18,
-            color: "#1C1410",
-          }}
-        >
-          {contact.name}
-        </div>
-        <div
-          style={{
-            fontSize: 13,
-            color: "#8A7060",
-            maxWidth: 240,
-            lineHeight: 1.6,
-          }}
-        >
-          {contact.rounded
-            ? "This is the beginning of your group conversation."
-            : "This is the beginning of your conversation."}
-        </div>
+        {messages.length === 0 ? (
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              textAlign: "center",
+            }}
+          >
+            <div
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: contact.rounded ? 18 : "50%",
+                background: contact.avatarColor,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#F9F4EF",
+                fontSize: 22,
+                fontFamily: "'DM Serif Display', Georgia, serif",
+                marginBottom: 8,
+              }}
+            >
+              {contact.avatar}
+            </div>
+            <div
+              style={{
+                fontFamily: "'DM Serif Display', Georgia, serif",
+                fontSize: 18,
+                color: "#1C1410",
+              }}
+            >
+              {contact.name}
+            </div>
+            <div
+              style={{
+                fontSize: 13,
+                color: "#8A7060",
+                maxWidth: 240,
+                lineHeight: 1.6,
+              }}
+            >
+              {contact.rounded
+                ? "This is the beginning of your group conversation."
+                : "This is the beginning of your conversation."}
+            </div>
+          </div>
+        ) : (
+          messages.map((m) => (
+            <div
+              key={m.id}
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                alignItems: "flex-end",
+                gap: 6,
+              }}
+            >
+              <span style={{ fontSize: 10, color: "#B09A8A", flexShrink: 0 }}>
+                {m.time}
+              </span>
+              <div
+                style={{
+                  maxWidth: "72%",
+                  padding: "9px 14px",
+                  borderRadius: "16px 16px 4px 16px",
+                  background: "#C96A3A",
+                  color: "#F9F4EF",
+                  fontSize: 14,
+                  lineHeight: 1.5,
+                  wordBreak: "break-word",
+                }}
+              >
+                {m.text}
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {/* Input bar */}
@@ -210,6 +301,9 @@ export default function ChatView({ contact, onBack, isMobile }) {
           <input
             type="text"
             placeholder={`Message ${contact.name}…`}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={handleKeyDown}
             style={{
               flex: 1,
               border: "none",
@@ -222,23 +316,33 @@ export default function ChatView({ contact, onBack, isMobile }) {
           />
         </div>
         <button
+          onClick={handleSend}
+          disabled={!draft.trim()}
           style={{
             width: 42,
             height: 42,
             borderRadius: "50%",
             border: "none",
-            background: "#C96A3A",
+            background: draft.trim() ? "#C96A3A" : "#E8D5C4",
             color: "#F9F4EF",
-            cursor: "pointer",
+            cursor: draft.trim() ? "pointer" : "not-allowed",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             flexShrink: 0,
             transition: "background 0.15s, transform 0.1s",
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "#B05A2E")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "#C96A3A")}
-          onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.93)")}
+          onMouseEnter={(e) => {
+            if (draft.trim()) e.currentTarget.style.background = "#B05A2E";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = draft.trim()
+              ? "#C96A3A"
+              : "#E8D5C4";
+          }}
+          onMouseDown={(e) => {
+            if (draft.trim()) e.currentTarget.style.transform = "scale(0.93)";
+          }}
           onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">

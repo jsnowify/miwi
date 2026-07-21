@@ -1,13 +1,25 @@
 import { useState, useEffect, useMemo } from "react";
 import Navbar from "../components/Navbar";
 import ComposeSheet from "../components/ComposeSheet";
-import { useCircles } from "../hooks/useCircles";
+import { useCircles, useCreateCircle } from "../hooks/useCircles";
 import { useFeed } from "../hooks/useFeed";
 import { useAuth } from "../context/AuthContext";
 
 /* ─── Display constants (not stored in the DB) ──────────────── */
 
 const CIRCLE_BG = ["#F9EDE3", "#E8F3EE", "#EDE8F5", "#F3EEE8", "#E8EEF3"];
+const EMOJI_CHOICES = [
+  "⭕",
+  "🌿",
+  "🔥",
+  "🫂",
+  "🌙",
+  "✨",
+  "🍃",
+  "🌪️",
+  "😂",
+  "💛",
+];
 
 const MOOD_COLORS = {
   calm: "#A0B89A",
@@ -48,9 +60,6 @@ function isToday(ts) {
   );
 }
 
-// Turns a raw Supabase circle + the full posts feed into everything the
-// panel needs to render: members with live "posted Xm ago" status, today's
-// mood breakdown, and an activity count for the badge.
 function buildDisplayCircle(circle, posts, currentUserId, idx) {
   const circlePosts = posts.filter((p) => p.circle_id === circle.id);
   const todaysPosts = circlePosts.filter((p) => isToday(p.created_at));
@@ -343,6 +352,257 @@ function ActionButton({ primary, icon, children, onClick }) {
   );
 }
 
+/* ─── Create Circle modal ─────────────────────────────────────── */
+
+function CreateCircleModal({ onClose, onCreated }) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [coverColor, setCoverColor] = useState(EMOJI_CHOICES[0]);
+  const [error, setError] = useState("");
+
+  const { mutate: createCircle, isPending, isLoading } = useCreateCircle();
+  const submitting = isPending ?? isLoading ?? false;
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    setError("");
+
+    if (!name.trim()) {
+      setError("Give your circle a name.");
+      return;
+    }
+
+    createCircle(
+      { name, description, coverColor },
+      {
+        onSuccess: (circle) => {
+          onCreated?.(circle);
+          onClose();
+        },
+        onError: (err) => {
+          console.error("Circle creation failed:", err);
+
+          // GRACEFUL ERROR HANDLING UX
+          const isTechnicalError =
+            err.message?.includes("schema cache") ||
+            err.message?.includes("column");
+          setError(
+            isTechnicalError
+              ? "We hit a snag connecting to the server. Please try again."
+              : (err.message ?? "Something went wrong."),
+          );
+        },
+      },
+    );
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[110] flex items-center justify-center bg-black/20 backdrop-blur-sm p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <form
+        onSubmit={handleSubmit}
+        style={{
+          width: "100%",
+          maxWidth: 400,
+          background: "#FDFAF7",
+          borderRadius: 20,
+          border: "1px solid #EDE3DA",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            padding: "18px 20px",
+            borderBottom: "1px solid #EDE3DA",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "'DM Serif Display', Georgia, serif",
+              fontSize: 18,
+              color: "#1C1410",
+            }}
+          >
+            New circle
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              border: "none",
+              background: "none",
+              cursor: "pointer",
+              color: "#8A7060",
+              display: "flex",
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M18 6 6 18M6 6l12 12"
+                stroke="#8A7060"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <div
+          style={{
+            padding: 20,
+            display: "flex",
+            flexDirection: "column",
+            gap: 14,
+          }}
+        >
+          {/* Emoji picker */}
+          <div>
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: "#8A7060",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                marginBottom: 8,
+              }}
+            >
+              Cover
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {EMOJI_CHOICES.map((emoji) => (
+                <button
+                  type="button"
+                  key={emoji}
+                  onClick={() => setCoverColor(emoji)}
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 12,
+                    border:
+                      coverColor === emoji
+                        ? "2px solid #C96A3A"
+                        : "1.5px solid #E8D5C4",
+                    background: coverColor === emoji ? "#F9EDE3" : "#FFF8F3",
+                    fontSize: 18,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Name */}
+          <div>
+            <label
+              style={{
+                display: "block",
+                fontSize: 11,
+                fontWeight: 600,
+                color: "#8A7060",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                marginBottom: 6,
+              }}
+            >
+              Circle name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={40}
+              placeholder="Barkada, family, close friends…"
+              autoFocus
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: 12,
+                border: "1.5px solid #E8D5C4",
+                background: "#FFF8F3",
+                color: "#1C1410",
+                fontSize: 14,
+                outline: "none",
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <label
+              style={{
+                display: "block",
+                fontSize: 11,
+                fontWeight: 600,
+                color: "#8A7060",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                marginBottom: 6,
+              }}
+            >
+              Description (optional)
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={140}
+              rows={2}
+              placeholder="What's this circle for?"
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: 12,
+                border: "1.5px solid #E8D5C4",
+                background: "#FFF8F3",
+                color: "#1C1410",
+                fontSize: 14,
+                outline: "none",
+                resize: "none",
+                boxSizing: "border-box",
+                fontFamily: "inherit",
+              }}
+            />
+          </div>
+
+          {error && (
+            <p style={{ margin: 0, fontSize: 13, color: "#A05A3A" }}>{error}</p>
+          )}
+
+          <button
+            type="submit"
+            disabled={submitting || !name.trim()}
+            style={{
+              width: "100%",
+              padding: 12,
+              borderRadius: 999,
+              border: "none",
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: submitting || !name.trim() ? "not-allowed" : "pointer",
+              background: submitting || !name.trim() ? "#E8D5C4" : "#C96A3A",
+              color: submitting || !name.trim() ? "#B09A8A" : "#F9F4EF",
+              transition: "background 0.15s",
+            }}
+          >
+            {submitting ? "Creating…" : "Create circle"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 /* ─── Right detail panel ─────────────────────────────────────── */
 
 function CirclePanel({ circle, onPost, onCopyInvite }) {
@@ -519,7 +779,7 @@ function CirclePanel({ circle, onPost, onCopyInvite }) {
 
 /* ─── Empty state (no circles at all) ───────────────────────── */
 
-function EmptyCircles() {
+function EmptyCircles({ onCreate }) {
   return (
     <div
       style={{
@@ -530,7 +790,7 @@ function EmptyCircles() {
         justifyContent: "center",
         padding: "40px 20px",
         textAlign: "center",
-        gap: 8,
+        gap: 12,
       }}
     >
       <div
@@ -553,6 +813,22 @@ function EmptyCircles() {
         circles are small private groups — invite up to 10 people who actually
         matter to you
       </div>
+      <button
+        onClick={onCreate}
+        style={{
+          marginTop: 4,
+          padding: "10px 20px",
+          borderRadius: 999,
+          border: "none",
+          background: "#C96A3A",
+          color: "#F9F4EF",
+          fontSize: 13,
+          fontWeight: 600,
+          cursor: "pointer",
+        }}
+      >
+        Create your first circle
+      </button>
     </div>
   );
 }
@@ -569,6 +845,7 @@ export default function Circles() {
   const [selectedId, setSelectedId] = useState(null);
   const [composing, setComposing] = useState(false);
   const [composeCircleId, setComposeCircleId] = useState(null);
+  const [showCreateCircle, setShowCreateCircle] = useState(false);
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" ? window.innerWidth < 768 : false,
   );
@@ -602,6 +879,11 @@ export default function Circles() {
   function handlePostToCircle(circle) {
     setComposeCircleId(circle.id);
     setComposing(true);
+  }
+
+  function handleCircleCreated(circle) {
+    setTab("mine");
+    setSelectedId(circle.id);
   }
 
   return (
@@ -644,6 +926,7 @@ export default function Circles() {
               borderBottom: "1px solid #EDE3DA",
               display: "flex",
               alignItems: "center",
+              justifyContent: "space-between",
               padding: "0 20px",
               gap: 12,
               background: "#F9F4EF",
@@ -659,6 +942,32 @@ export default function Circles() {
             >
               Circles
             </span>
+            <button
+              onClick={() => setShowCreateCircle(true)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "7px 14px",
+                borderRadius: 999,
+                border: "none",
+                background: "#F0E5DB",
+                color: "#A05A3A",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "background 0.15s",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.background = "#E8D5C4")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.background = "#F0E5DB")
+              }
+            >
+              <i className="ti ti-plus" style={{ fontSize: 15 }} />
+              New circle
+            </button>
           </div>
 
           {/* Tabs */}
@@ -723,7 +1032,7 @@ export default function Circles() {
                 loading circles…
               </div>
             ) : circles.length === 0 ? (
-              <EmptyCircles />
+              <EmptyCircles onCreate={() => setShowCreateCircle(true)} />
             ) : (
               <div style={{ display: "flex", flexDirection: "column" }}>
                 {circles.map((c) => (
@@ -753,6 +1062,13 @@ export default function Circles() {
         <ComposeSheet
           initialCircleId={composeCircleId}
           onClose={() => setComposing(false)}
+        />
+      )}
+
+      {showCreateCircle && (
+        <CreateCircleModal
+          onClose={() => setShowCreateCircle(false)}
+          onCreated={handleCircleCreated}
         />
       )}
     </>

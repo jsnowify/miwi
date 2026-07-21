@@ -1,8 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useCircles } from "../hooks/useCircles";
 import { useCreatePost } from "../hooks/useFeed";
 
-// Inlined so this component doesn't depend on the old mock data.js file.
 const MOODS = [
   { emoji: "🌿", tag: "calm" },
   { emoji: "🔥", tag: "excited" },
@@ -21,16 +20,23 @@ export default function ComposeSheet({ onClose, initialCircleId }) {
   const [circleId, setCircleId] = useState(initialCircleId ?? "");
   const [error, setError] = useState("");
 
+  // Media States
+  const fileRef = useRef(null);
+  const [mediaFile, setMediaFile] = useState(null);
+  const [mediaPreview, setMediaPreview] = useState(null);
+
+  // Spotify Search States
+  const [showMusicSearch, setShowMusicSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedSong, setSelectedSong] = useState(null);
+
   const { data: circles = [], isLoading: loadingCircles } = useCircles();
   const mutation = useCreatePost();
   const { mutate: createPost } = mutation;
-  // Support both react-query v4 (isLoading) and v5 (isPending) without
-  // needing to know which major version this project is pinned to.
   const posting = mutation.isPending ?? mutation.isLoading ?? false;
 
-  // Default to the passed-in circle, or the first one the user belongs to,
-  // once circles have loaded. Runs as an effect (not during render) to
-  // avoid a setState-during-render warning.
   useEffect(() => {
     if (circleId) return;
     if (initialCircleId) {
@@ -40,6 +46,74 @@ export default function ComposeSheet({ onClose, initialCircleId }) {
     }
   }, [circles, initialCircleId, circleId]);
 
+  // Handle Image Selection
+  function handleImagePick(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Media exclusivity: clear song if image is picked
+    setSelectedSong(null);
+    setMediaFile(file);
+    setMediaPreview(URL.createObjectURL(file));
+  }
+
+  // Handle Spotify Search (Mocked - wire to your backend)
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    const debounce = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        // TODO: Replace with your actual Spotify/iTunes API call.
+        // NOTE: The open iTunes Search API is a great zero-auth alternative to Spotify
+        // that natively returns 30-second preview_urls:
+        // fetch(`https://itunes.apple.com/search?term=${searchQuery}&entity=song&limit=4`)
+
+        // Mock data for UI testing
+        setSearchResults([
+          {
+            track_id: "1",
+            title: "Pink + White",
+            artist: "Frank Ocean",
+            cover_url: "https://placehold.co/100x100/F0E5DB/8A7060?text=FO",
+            preview_url: "mock-url-1",
+          },
+          {
+            track_id: "2",
+            title: "Perfect",
+            artist: "Ed Sheeran",
+            cover_url: "https://placehold.co/100x100/F0E5DB/8A7060?text=ES",
+            preview_url: "mock-url-2",
+          },
+        ]);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(debounce);
+  }, [searchQuery]);
+
+  function handleSongPick(song) {
+    // Media exclusivity: clear image if song is picked
+    setMediaFile(null);
+    setMediaPreview(null);
+    setSelectedSong(song);
+    setShowMusicSearch(false);
+    setSearchQuery("");
+  }
+
+  function clearMedia() {
+    setMediaFile(null);
+    setMediaPreview(null);
+    setSelectedSong(null);
+  }
+
   function submit() {
     setError("");
     if (!selectedMood) return;
@@ -47,12 +121,17 @@ export default function ComposeSheet({ onClose, initialCircleId }) {
       setError("Pick a circle to share this with.");
       return;
     }
+
+    // We pass the raw file and song data to the hook.
+    // The hook will handle the Supabase storage upload and JSONB formatting.
     createPost(
       {
         circleId,
         mood: selectedMood.emoji,
         moodLabel: selectedMood.tag,
         caption,
+        mediaFile,
+        selectedSong,
       },
       {
         onSuccess: () => onClose(),
@@ -64,214 +143,250 @@ export default function ComposeSheet({ onClose, initialCircleId }) {
   const canSubmit = !!selectedMood && !!circleId && !posting;
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        display: "flex",
-        alignItems: "flex-end",
-        justifyContent: "center",
-        background: "rgba(28,20,16,0.4)",
-        zIndex: 100,
-      }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
+    <>
       <div
-        style={{
-          width: "100%",
-          maxWidth: 600,
-          background: "#FDFAF7",
-          border: "1px solid #EDE3DA",
-          borderRadius: "24px 24px 0 0",
-          padding: "24px 24px 40px",
-        }}
+        className="fixed inset-0 flex items-end justify-center bg-[#1C1410]/40 z-[100] backdrop-blur-sm"
+        onClick={(e) => e.target === e.currentTarget && onClose()}
       >
-        {/* Header */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 20,
-          }}
-        >
-          <span
-            style={{
-              fontFamily: "'DM Serif Display', Georgia, serif",
-              fontSize: 18,
-              color: "#1C1410",
-            }}
-          >
-            How are you feeling?
-          </span>
-          <button
-            onClick={onClose}
-            style={{
-              background: "none",
-              border: "none",
-              color: "#8A7060",
-              cursor: "pointer",
-              fontSize: 16,
-            }}
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Circle picker */}
-        <div style={{ marginBottom: 16 }}>
-          <label
-            style={{
-              display: "block",
-              fontSize: 11,
-              fontWeight: 600,
-              color: "#8A7060",
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-              marginBottom: 6,
-            }}
-          >
-            Share with
-          </label>
-          {loadingCircles ? (
-            <p style={{ fontSize: 13, color: "#8A7060", margin: 0 }}>
-              loading circles…
-            </p>
-          ) : circles.length === 0 ? (
-            <p style={{ fontSize: 13, color: "#A05A3A", margin: 0 }}>
-              you're not in any circles yet — create one first.
-            </p>
-          ) : (
-            <select
-              value={circleId}
-              onChange={(e) => setCircleId(e.target.value)}
-              style={{
-                width: "100%",
-                boxSizing: "border-box",
-                padding: "10px 14px",
-                borderRadius: 12,
-                border: "1.5px solid #E8D5C4",
-                background: "#FFF8F3",
-                color: "#1C1410",
-                fontSize: 14,
-                outline: "none",
-                fontFamily: "inherit",
-              }}
+        <div className="w-full max-w-[600px] bg-[#FDFAF7] border border-[#EDE3DA] rounded-t-3xl p-6 pb-safe flex flex-col max-h-[90vh]">
+          {/* Header */}
+          <div className="flex justify-between items-center mb-5 shrink-0">
+            <span className="font-serif text-lg text-[#1C1410]">
+              How are you feeling?
+            </span>
+            <button
+              onClick={onClose}
+              className="text-[#8A7060] hover:text-[#5A3A28] transition"
             >
-              {circles.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
+              <i className="ti ti-x text-xl" />
+            </button>
+          </div>
 
-        {/* Mood picker */}
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 8,
-            marginBottom: 20,
-          }}
-        >
-          {MOODS.map((m) => {
-            const picked = selectedMood?.tag === m.tag;
-            return (
+          <div className="overflow-y-auto pr-2 custom-scrollbar flex-1">
+            {/* Circle picker */}
+            <div className="mb-4">
+              <label className="block text-[11px] font-semibold text-[#8A7060] uppercase tracking-wide mb-1.5">
+                Share with
+              </label>
+              {loadingCircles ? (
+                <p className="text-[13px] text-[#8A7060] m-0">
+                  loading circles…
+                </p>
+              ) : circles.length === 0 ? (
+                <p className="text-[13px] text-[#A05A3A] m-0">
+                  you're not in any circles yet — create one first.
+                </p>
+              ) : (
+                <select
+                  value={circleId}
+                  onChange={(e) => setCircleId(e.target.value)}
+                  className="w-full p-3 rounded-xl border-[1.5px] border-[#E8D5C4] bg-[#FFF8F3] text-[#1C1410] text-sm outline-none"
+                >
+                  {circles.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {/* Mood picker */}
+            <div className="flex flex-wrap gap-2 mb-5">
+              {MOODS.map((m) => {
+                const picked = selectedMood?.tag === m.tag;
+                return (
+                  <button
+                    key={m.tag}
+                    onClick={() => setSelectedMood(m)}
+                    className={`px-4 py-2 rounded-full text-[13px] transition border-[1.5px] ${
+                      picked
+                        ? "bg-[#F9EDE3] border-[#C96A3A] text-[#5A3A28]"
+                        : "bg-[#F5EDE3] border-transparent text-[#5A3A28] hover:bg-[#EDE3DA]"
+                    }`}
+                  >
+                    {m.emoji} {m.tag}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Caption */}
+            <textarea
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+              placeholder="add a caption… (optional)"
+              maxLength={280}
+              rows={3}
+              className="w-full p-4 rounded-xl text-sm bg-[#FFF8F3] border border-[#E8D5C4] text-[#1C1410] resize-none outline-none mb-3"
+            />
+
+            {/* Media Previews */}
+            {mediaPreview && (
+              <div className="relative mb-4 inline-block">
+                <img
+                  src={mediaPreview}
+                  alt="Upload preview"
+                  className="h-32 w-auto rounded-xl border border-[#EDE3DA] object-cover"
+                />
+                <button
+                  onClick={clearMedia}
+                  className="absolute -top-2 -right-2 w-6 h-6 bg-[#C96A3A] text-white rounded-full flex items-center justify-center text-xs shadow-md hover:bg-[#A05A3A]"
+                >
+                  <i className="ti ti-x" />
+                </button>
+              </div>
+            )}
+
+            {selectedSong && (
+              <div className="relative mb-4 flex items-center gap-3 p-3 bg-[#F5EDE3] rounded-xl border border-[#EDE3DA]">
+                <img
+                  src={selectedSong.cover_url}
+                  alt="Cover"
+                  className="w-12 h-12 rounded-md object-cover"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-[#1C1410] truncate">
+                    {selectedSong.title}
+                  </div>
+                  <div className="text-xs text-[#8A7060] truncate">
+                    {selectedSong.artist}
+                  </div>
+                </div>
+                <button
+                  onClick={clearMedia}
+                  className="w-8 h-8 rounded-full bg-[#E8D5C4] text-[#8A7060] flex items-center justify-center hover:bg-[#DBC4B1]"
+                >
+                  <i className="ti ti-x" />
+                </button>
+              </div>
+            )}
+
+            {error && (
+              <p className="text-[13px] text-[#A05A3A] mb-3 font-medium">
+                {error}
+              </p>
+            )}
+            {!error && !canSubmit && !posting && (
+              <p className="text-xs text-[#B09A8A] mb-3">
+                {!selectedMood
+                  ? "Pick a mood above to continue."
+                  : !circleId
+                    ? loadingCircles
+                      ? "Loading your circles…"
+                      : "No circle selected."
+                    : ""}
+              </p>
+            )}
+          </div>
+
+          {/* Footer & Media Toolbar */}
+          <div className="flex justify-between items-center pt-3 border-t border-[#EDE3DA] shrink-0 mt-2">
+            <div className="flex items-center gap-2">
               <button
-                key={m.tag}
-                onClick={() => setSelectedMood(m)}
-                style={{
-                  padding: "8px 16px",
-                  borderRadius: 999,
-                  fontSize: 13,
-                  background: picked ? "#F9EDE3" : "#F5EDE3",
-                  border: picked
-                    ? "1.5px solid #C96A3A"
-                    : "1.5px solid transparent",
-                  color: "#5A3A28",
-                  cursor: "pointer",
-                  transition: "all 0.15s",
-                }}
+                onClick={() => fileRef.current?.click()}
+                className="w-10 h-10 rounded-full bg-[#F0E5DB] text-[#C96A3A] flex items-center justify-center hover:bg-[#E8D5C4] transition"
+                title="Attach Image"
               >
-                {m.emoji} {m.tag}
+                <i className="ti ti-photo text-xl" />
               </button>
-            );
-          })}
-        </div>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImagePick}
+                className="hidden"
+              />
 
-        {/* Caption */}
-        <textarea
-          value={caption}
-          onChange={(e) => setCaption(e.target.value)}
-          placeholder="add a caption… (optional)"
-          maxLength={280}
-          rows={3}
-          style={{
-            width: "100%",
-            boxSizing: "border-box",
-            padding: "12px 16px",
-            borderRadius: 12,
-            fontSize: 14,
-            background: "#FFF8F3",
-            border: "1px solid #E8D5C4",
-            color: "#1C1410",
-            resize: "none",
-            outline: "none",
-            fontFamily: "inherit",
-            marginBottom: 16,
-          }}
-        />
+              <button
+                onClick={() => setShowMusicSearch(!showMusicSearch)}
+                className="w-10 h-10 rounded-full bg-[#F0E5DB] text-[#C96A3A] flex items-center justify-center hover:bg-[#E8D5C4] transition"
+                title="Attach Song"
+              >
+                <i className="ti ti-music text-xl" />
+              </button>
 
-        {error && (
-          <p style={{ fontSize: 13, color: "#A05A3A", margin: "0 0 12px" }}>
-            {error}
-          </p>
-        )}
+              <span className="text-xs text-[#B09A8A] ml-2 hidden md:inline-block">
+                {caption.length}/280
+              </span>
+            </div>
 
-        {!error && !canSubmit && !posting && (
-          <p style={{ fontSize: 12, color: "#B09A8A", margin: "0 0 12px" }}>
-            {!selectedMood
-              ? "Pick a mood above to continue."
-              : !circleId
-                ? loadingCircles
-                  ? "Loading your circles…"
-                  : "No circle selected — you may not belong to any circles yet."
-                : ""}
-          </p>
-        )}
-
-        {/* Footer */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <span style={{ fontSize: 12, color: "#B09A8A" }}>
-            {caption.length}/280
-          </span>
-          <button
-            onClick={submit}
-            disabled={!canSubmit}
-            style={{
-              padding: "10px 28px",
-              borderRadius: 999,
-              fontSize: 14,
-              fontWeight: 500,
-              border: "none",
-              cursor: canSubmit ? "pointer" : "not-allowed",
-              background: canSubmit ? "#C96A3A" : "#E8D5C4",
-              color: canSubmit ? "#F9F4EF" : "#B09A8A",
-              transition: "background 0.15s",
-            }}
-          >
-            {posting ? "Posting…" : "Post"}
-          </button>
+            <button
+              onClick={submit}
+              disabled={!canSubmit}
+              className={`px-7 py-2.5 rounded-full text-sm font-semibold transition ${
+                canSubmit
+                  ? "bg-[#C96A3A] text-[#F9F4EF] hover:bg-[#A05A3A]"
+                  : "bg-[#E8D5C4] text-[#B09A8A] cursor-not-allowed"
+              }`}
+            >
+              {posting ? "Posting…" : "Post"}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Spotify Search Popover */}
+      {showMusicSearch && (
+        <div className="fixed inset-0 z-[105] flex items-center justify-center bg-black/20 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm bg-[#FDFAF7] rounded-2xl shadow-xl border border-[#EDE3DA] overflow-hidden flex flex-col max-h-[70vh]">
+            <div className="p-4 border-b border-[#EDE3DA] flex items-center gap-3">
+              <i className="ti ti-search text-[#8A7060] text-lg" />
+              <input
+                type="text"
+                placeholder="Search for a song..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
+                className="flex-1 bg-transparent border-none outline-none text-sm text-[#1C1410] placeholder:text-[#B09A8A]"
+              />
+              <button
+                onClick={() => setShowMusicSearch(false)}
+                className="text-[#8A7060]"
+              >
+                <i className="ti ti-x text-lg" />
+              </button>
+            </div>
+            <div className="overflow-y-auto p-2">
+              {isSearching ? (
+                <div className="p-4 text-center text-sm text-[#B09A8A]">
+                  Searching...
+                </div>
+              ) : searchResults.length > 0 ? (
+                searchResults.map((song) => (
+                  <button
+                    key={song.track_id}
+                    onClick={() => handleSongPick(song)}
+                    className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-[#F5EDE3] transition text-left"
+                  >
+                    <img
+                      src={song.cover_url}
+                      alt="Cover"
+                      className="w-10 h-10 rounded object-cover"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold text-[#1C1410] truncate">
+                        {song.title}
+                      </div>
+                      <div className="text-xs text-[#8A7060] truncate">
+                        {song.artist}
+                      </div>
+                    </div>
+                  </button>
+                ))
+              ) : searchQuery ? (
+                <div className="p-4 text-center text-sm text-[#B09A8A]">
+                  No results found.
+                </div>
+              ) : (
+                <div className="p-8 text-center text-sm text-[#B09A8A]">
+                  Type to search tracks
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

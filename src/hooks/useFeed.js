@@ -41,17 +41,61 @@ export function useFeed() {
   });
 }
 
-// Creates a real mood post in Supabase and keeps every screen that reads
-// posts (Feed, Profile, Circles mood breakdown) in sync afterward.
+// Creates a real mood post in Supabase with optional media attachments
+// and keeps every screen that reads posts in sync afterward.
 export function useCreatePost() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ circleId, mood, moodLabel, caption }) => {
+    mutationFn: async ({
+      circleId,
+      mood,
+      moodLabel,
+      caption,
+      mediaFile,
+      selectedSong,
+    }) => {
+      if (!user) throw new Error("Not authenticated");
       if (!circleId) throw new Error("Pick a circle to share this with.");
       if (!mood) throw new Error("Pick a mood first.");
 
+      let media_attachment = null;
+
+      // 1. Handle Image Upload
+      if (mediaFile) {
+        const ext = mediaFile.name.split(".").pop().toLowerCase();
+        const filePath = `${user.id}/${Date.now()}.${ext}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("post_media")
+          .upload(filePath, mediaFile, { upsert: false });
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from("post_media")
+          .getPublicUrl(filePath);
+
+        media_attachment = {
+          type: "image",
+          url: urlData.publicUrl,
+        };
+      }
+
+      // 2. Handle Song Attachment
+      if (selectedSong) {
+        media_attachment = {
+          type: "song",
+          track_id: selectedSong.track_id,
+          title: selectedSong.title,
+          artist: selectedSong.artist,
+          cover_url: selectedSong.cover_url,
+          preview_url: selectedSong.preview_url,
+        };
+      }
+
+      // 3. Insert the Post
       const { data, error } = await supabase
         .from("posts")
         .insert({
@@ -60,6 +104,7 @@ export function useCreatePost() {
           mood,
           mood_label: moodLabel,
           caption: caption?.trim() ? caption.trim() : null,
+          media_attachment, // The new JSONB column
         })
         .select(
           `
@@ -75,8 +120,7 @@ export function useCreatePost() {
     },
     onSuccess: () => {
       // Feed, Profile's "my posts" tab, and Circles' mood breakdown all
-      // derive from these two query keys — refetch both so the new post
-      // shows up everywhere immediately.
+      // derive from these query keys — refetch so the new post shows up everywhere.
       queryClient.invalidateQueries(["feed", user?.id]);
       queryClient.invalidateQueries(["circles", user?.id]);
       queryClient.invalidateQueries(["profile", user?.id]);

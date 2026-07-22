@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar, { CirclesTopbarBtn } from "../components/Navbar";
 import ComposeSheet from "../components/ComposeSheet";
 import MessagesPanel from "../components/MessagesPanel";
+import LyricsSync from "../components/LyricsSync";
 import { useFeed } from "../hooks/useFeed";
 
 const AVATAR_COLORS = [
@@ -32,8 +33,6 @@ function timeAgo(ts) {
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   return `${Math.floor(diff / 86400)}d ago`;
 }
-
-/* ─── Avatar (shared by story ring + post) ─────────────────── */
 
 function PersonAvatar({ author, size, ring }) {
   const initial = author?.display_name?.charAt(0).toUpperCase() ?? "?";
@@ -88,8 +87,6 @@ function PersonAvatar({ author, size, ring }) {
   );
 }
 
-/* ─── Story ring ────────────────────────────────────────────── */
-
 function StoryRing({ author, hasNew }) {
   return (
     <div className="flex flex-col items-center gap-1.5 cursor-pointer flex-shrink-0">
@@ -99,9 +96,8 @@ function StoryRing({ author, hasNew }) {
   );
 }
 
-/* ─── Single post ───────────────────────────────────────────── */
-
 function Post({ post, visible }) {
+  const audioRef = useRef(null);
   const reactionMap = (post.reactions ?? []).reduce((acc, r) => {
     acc[r.reaction] = (acc[r.reaction] ?? 0) + 1;
     return acc;
@@ -112,6 +108,12 @@ function Post({ post, visible }) {
   }));
 
   const circleName = post.circles?.name || post.circle?.name;
+
+  const handleLoadedMetadata = () => {
+    if (audioRef.current && post.media_attachment?.clip_start) {
+      audioRef.current.currentTime = post.media_attachment.clip_start;
+    }
+  };
 
   return (
     <div
@@ -129,7 +131,6 @@ function Post({ post, visible }) {
       <PersonAvatar author={post.author} size={40} ring={false} />
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        {/* Header: Author + Circle + Mood + Time */}
         <div
           style={{
             display: "flex",
@@ -177,7 +178,6 @@ function Post({ post, visible }) {
           </span>
         </div>
 
-        {/* Caption */}
         {post.caption && (
           <p
             style={{
@@ -192,7 +192,6 @@ function Post({ post, visible }) {
           </p>
         )}
 
-        {/* Media Renderer: Image */}
         {post.media_attachment?.type === "image" && (
           <div style={{ marginTop: 12 }}>
             <img
@@ -209,73 +208,77 @@ function Post({ post, visible }) {
           </div>
         )}
 
-        {/* Media Renderer: Audio/Song */}
         {post.media_attachment?.type === "song" &&
           post.media_attachment.preview_url && (
             <div
               style={{
                 marginTop: 12,
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
                 padding: 12,
                 background: "#F5EDE3",
                 borderRadius: 14,
                 border: "1px solid #EDE3DA",
               }}
             >
-              <img
-                src={post.media_attachment.cover_url}
-                alt="Song cover"
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 8,
-                  objectFit: "cover",
-                  flexShrink: 0,
-                }}
-              />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <img
+                  src={post.media_attachment.cover_url}
+                  alt="Song cover"
                   style={{
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: "#1C1410",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {post.media_attachment.title}
-                </div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: "#8A7060",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    marginBottom: 6,
-                  }}
-                >
-                  {post.media_attachment.artist}
-                </div>
-
-                <audio
-                  controls
-                  src={post.media_attachment.preview_url}
-                  style={{
-                    height: 32,
-                    width: "100%",
-                    maxWidth: 250,
-                    outline: "none",
+                    width: 56,
+                    height: 56,
+                    borderRadius: 8,
+                    objectFit: "cover",
+                    flexShrink: 0,
                   }}
                 />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: "#1C1410",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {post.media_attachment.title}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "#8A7060",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      marginBottom: 6,
+                    }}
+                  >
+                    {post.media_attachment.artist}
+                  </div>
+
+                  <audio
+                    ref={audioRef}
+                    controls
+                    onLoadedMetadata={handleLoadedMetadata}
+                    src={post.media_attachment.preview_url}
+                    style={{
+                      height: 32,
+                      width: "100%",
+                      maxWidth: 250,
+                      outline: "none",
+                    }}
+                  />
+                </div>
               </div>
+
+              <LyricsSync
+                lyrics={post.media_attachment.lyrics}
+                audioRef={audioRef}
+              />
             </div>
           )}
 
-        {/* Actions bar */}
         <div
           style={{
             display: "flex",
@@ -387,8 +390,6 @@ function EmptyFeed() {
   );
 }
 
-/* ─── Feed page ─────────────────────────────────────────────── */
-
 export default function Feed() {
   const navigate = useNavigate();
   const { data: posts = [], isLoading } = useFeed();
@@ -449,7 +450,6 @@ export default function Feed() {
           onCompose={() => setComposing(true)}
         />
 
-        {/* Center feed */}
         <div
           style={{
             flex: 1,
@@ -471,7 +471,6 @@ export default function Feed() {
             }}
             className="border-x-0 md:border-x"
           >
-            {/* Mobile topbar */}
             <div
               className="md:hidden sticky top-0 z-20 flex justify-between items-center px-4"
               style={{
@@ -499,7 +498,6 @@ export default function Feed() {
               />
             </div>
 
-            {/* Desktop header */}
             <div
               className="hidden md:flex sticky top-0 z-20 justify-center items-center"
               style={{
@@ -513,7 +511,6 @@ export default function Feed() {
               </span>
             </div>
 
-            {/* Story rings */}
             {storyAuthors.length > 0 && (
               <div
                 style={{
@@ -531,7 +528,6 @@ export default function Feed() {
               </div>
             )}
 
-            {/* Posts */}
             <div
               style={{
                 padding: isDesktopWide ? "24px 32px 48px" : "20px 20px 40px",

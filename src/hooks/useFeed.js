@@ -8,9 +8,8 @@ export function useFeed() {
   return useQuery({
     queryKey: ["feed", user?.id],
     enabled: !!user?.id,
-    staleTime: 1000 * 60 * 2, // 2 min
+    staleTime: 1000 * 60 * 2,
     queryFn: async () => {
-      // Get all circles the user belongs to
       const { data: memberships, error: mError } = await supabase
         .from("circle_members")
         .select("circle_id")
@@ -42,8 +41,6 @@ export function useFeed() {
   });
 }
 
-// Creates a real mood post in Supabase with optional media attachments
-// and keeps every screen that reads posts in sync afterward.
 export function useCreatePost() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -63,7 +60,6 @@ export function useCreatePost() {
 
       let media_attachment = null;
 
-      // 1. Handle Image Upload
       if (mediaFile) {
         const ext = mediaFile.name.split(".").pop().toLowerCase();
         const filePath = `${user.id}/${Date.now()}.${ext}`;
@@ -84,7 +80,6 @@ export function useCreatePost() {
         };
       }
 
-      // 2. Handle Song Attachment
       if (selectedSong) {
         media_attachment = {
           type: "song",
@@ -93,10 +88,11 @@ export function useCreatePost() {
           artist: selectedSong.artist,
           cover_url: selectedSong.cover_url,
           preview_url: selectedSong.preview_url,
+          clip_start: selectedSong.clip_start ?? 0,
+          lyrics: selectedSong.lyrics ?? null,
         };
       }
 
-      // 3. Insert the Post
       const { data, error } = await supabase
         .from("posts")
         .insert({
@@ -105,7 +101,7 @@ export function useCreatePost() {
           mood,
           mood_label: moodLabel,
           caption: caption?.trim() ? caption.trim() : null,
-          media_attachment, // The new JSONB column
+          media_attachment,
         })
         .select(
           `
@@ -121,8 +117,6 @@ export function useCreatePost() {
       return data;
     },
     onSuccess: () => {
-      // Feed, Profile's "my posts" tab, and Circles' mood breakdown all
-      // derive from these query keys — refetch so the new post shows up everywhere.
       queryClient.invalidateQueries(["feed", user?.id]);
       queryClient.invalidateQueries(["circles", user?.id]);
       queryClient.invalidateQueries(["profile", user?.id]);

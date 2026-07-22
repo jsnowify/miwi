@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useCircles } from "../hooks/useCircles";
 import { useCreatePost } from "../hooks/useFeed";
+import ClipPicker from "./ClipPicker";
 
 const MOODS = [
   { emoji: "🌿", tag: "calm" },
@@ -25,13 +26,14 @@ export default function ComposeSheet({ onClose, initialCircleId }) {
   const [mediaFile, setMediaFile] = useState(null);
   const [mediaPreview, setMediaPreview] = useState(null);
 
-  // Song Search States (iTunes Search API — zero-auth, has 30s preview_url)
+  // Song States
   const [showMusicSearch, setShowMusicSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
   const [selectedSong, setSelectedSong] = useState(null);
+  const [clipStart, setClipStart] = useState(0);
 
   const { data: circles = [], isLoading: loadingCircles } = useCircles();
   const mutation = useCreatePost();
@@ -47,8 +49,6 @@ export default function ComposeSheet({ onClose, initialCircleId }) {
     }
   }, [circles, initialCircleId, circleId]);
 
-  // Revoke the media preview blob URL on unmount / when it changes,
-  // so we don't leak memory across repeated picks.
   useEffect(() => {
     return () => {
       if (mediaPreview?.startsWith("blob:")) {
@@ -57,7 +57,6 @@ export default function ComposeSheet({ onClose, initialCircleId }) {
     };
   }, [mediaPreview]);
 
-  // Handle Image Selection
   function handleImagePick(e) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -66,13 +65,13 @@ export default function ComposeSheet({ onClose, initialCircleId }) {
       URL.revokeObjectURL(mediaPreview);
     }
 
-    // Media exclusivity: clear song if image is picked
     setSelectedSong(null);
+    setClipStart(0);
     setMediaFile(file);
     setMediaPreview(URL.createObjectURL(file));
   }
 
-  // Song search via the iTunes Search API
+  // Live iTunes Search API
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
@@ -102,6 +101,8 @@ export default function ComposeSheet({ onClose, initialCircleId }) {
           artist: track.artistName,
           cover_url: track.artworkUrl100,
           preview_url: track.previewUrl,
+          duration: 30, // iTunes previews are locked to 30s
+          lyrics: null, // iTunes does not provide lyrics
         }));
 
         setSearchResults(mapped);
@@ -123,12 +124,12 @@ export default function ComposeSheet({ onClose, initialCircleId }) {
   }, [searchQuery]);
 
   function handleSongPick(song) {
-    // Media exclusivity: clear image if song is picked
     if (mediaPreview?.startsWith("blob:")) {
       URL.revokeObjectURL(mediaPreview);
     }
     setMediaFile(null);
     setMediaPreview(null);
+    setClipStart(0);
     setSelectedSong(song);
     setShowMusicSearch(false);
     setSearchQuery("");
@@ -141,6 +142,7 @@ export default function ComposeSheet({ onClose, initialCircleId }) {
     setMediaFile(null);
     setMediaPreview(null);
     setSelectedSong(null);
+    setClipStart(0);
   }
 
   function submit() {
@@ -158,14 +160,14 @@ export default function ComposeSheet({ onClose, initialCircleId }) {
         moodLabel: selectedMood.tag,
         caption,
         mediaFile,
-        selectedSong,
+        selectedSong: selectedSong
+          ? { ...selectedSong, clip_start: clipStart }
+          : null,
       },
       {
         onSuccess: () => onClose(),
         onError: (err) => {
           console.error("Post creation failed:", err);
-
-          // GRACEFUL ERROR HANDLING UX
           const isTechnicalError =
             err.message?.includes("schema cache") ||
             err.message?.includes("column");
@@ -278,26 +280,37 @@ export default function ComposeSheet({ onClose, initialCircleId }) {
             )}
 
             {selectedSong && (
-              <div className="relative mb-4 flex items-center gap-3 p-3 bg-[#F5EDE3] rounded-xl border border-[#EDE3DA]">
-                <img
-                  src={selectedSong.cover_url}
-                  alt="Cover"
-                  className="w-12 h-12 rounded-md object-cover"
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-[#1C1410] truncate">
-                    {selectedSong.title}
+              <div className="relative mb-4 flex flex-col gap-3 p-3 bg-[#F5EDE3] rounded-xl border border-[#EDE3DA]">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={selectedSong.cover_url}
+                    alt="Cover"
+                    className="w-12 h-12 rounded-md object-cover"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold text-[#1C1410] truncate">
+                      {selectedSong.title}
+                    </div>
+                    <div className="text-xs text-[#8A7060] truncate">
+                      {selectedSong.artist}
+                    </div>
                   </div>
-                  <div className="text-xs text-[#8A7060] truncate">
-                    {selectedSong.artist}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={clearMedia}
+                    className="w-8 h-8 rounded-full bg-[#E8D5C4] text-[#8A7060] flex items-center justify-center hover:bg-[#DBC4B1]"
+                  >
+                    <i className="ti ti-x" />
+                  </button>
                 </div>
-                <button
-                  onClick={clearMedia}
-                  className="w-8 h-8 rounded-full bg-[#E8D5C4] text-[#8A7060] flex items-center justify-center hover:bg-[#DBC4B1]"
-                >
-                  <i className="ti ti-x" />
-                </button>
+
+                {selectedSong.duration && selectedSong.duration > 30 && (
+                  <ClipPicker
+                    audioUrl={selectedSong.preview_url}
+                    duration={selectedSong.duration}
+                    onClipChange={setClipStart}
+                  />
+                )}
               </div>
             )}
 

@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../context/AuthContext";
 import { extractAvatarStoragePath, getInitial } from "../../lib/utils";
+import { safeImageExtension } from "../../lib/extensionHelper";
 import toast from "react-hot-toast";
 
 export default function EditProfileSheet({ profile, onClose }) {
@@ -127,7 +128,10 @@ export default function EditProfileSheet({ profile, onClose }) {
         if (refreshError)
           throw new Error("Session expired. Please log in again.");
 
-        const ext = avatarFile.name.split(".").pop().toLowerCase();
+        // Derive the extension from the file's actual MIME type rather
+        // than trusting avatarFile.name — a crafted filename shouldn't
+        // end up directly inside a storage path.
+        const ext = safeImageExtension(avatarFile);
         const path = `${user.id}/avatar-${Date.now()}.${ext}`;
 
         const { error: uploadError } = await supabase.storage

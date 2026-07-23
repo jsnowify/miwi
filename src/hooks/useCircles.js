@@ -31,10 +31,15 @@ export function useCircles() {
 
 function generateInviteCode() {
   // 6-char, human-friendly (no ambiguous 0/O/1/I) invite code.
+  // Uses crypto.getRandomValues rather than Math.random — Math.random
+  // isn't a CSPRNG, and this code gates access to a private circle, so
+  // it's worth the slightly stronger guarantee.
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = new Uint8Array(6);
+  crypto.getRandomValues(bytes);
   let code = "";
   for (let i = 0; i < 6; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
+    code += chars[bytes[i] % chars.length];
   }
   return code;
 }
@@ -55,33 +60,48 @@ export function useCreateCircle() {
         throw new Error("Circle name is too long (max 40 characters).");
       }
 
-      // 1. Fixed Schema mapping: use owner_id instead of created_by
-      const { data: circle, error: circleError } = await supabase
-        .from("circles")
-        .insert({
-          name: trimmedName,
-          description: description?.trim() || null,
-          cover_color: coverColor || "⭕",
-          invite_code: generateInviteCode(),
-          owner_id: user.id, // SCHEMA FIX HERE
-        })
-        .select()
-        .single();
+      // Retry a couple times on the (rare) chance two circles land on the
+      // same invite code. If invite_code has a unique constraint in the DB,
+      // a collision surfaces as Postgres error 23505 rather than silently
+      // succeeding with a duplicate code — retry with a fresh code instead
+      // of failing the whole creation for something the user can't control.
+      let circle, circleError;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const result = await supabase
+          .from("circles")
+          .insert({
+            name: trimmedName,
+            description: description?.trim() || null,
+            cover_color: coverColor || "⭕",
+            invite_code: generateInviteCode(),
+            owner_id: user.id,
+          })
+          .select()
+          .single();
+
+        circle = result.data;
+        circleError = result.error;
+
+        if (!circleError || circleError.code !== "23505") break;
+      }
 
       if (circleError) throw circleError;
 
-      // 2. Add the user as an owner to circle_members
       const { error: memberError } = await supabase
         .from("circle_members")
         .insert({
           circle_id: circle.id,
           user_id: user.id,
-          role: "owner", // Assign owner role based on schema
+          role: "owner",
         });
 
       if (memberError) {
         // Roll back the orphaned circle so we don't leave a memberless
-        // circle behind if adding the creator as a member fails.
+        // circle behind if adding the creator as a member fails. Note:
+        // if this delete itself fails (e.g. RLS blocks delete before any
+        // member row exists), the circle can still end up orphaned — the
+        // more robust fix is wrapping both inserts in a single Postgres
+        // transaction via an RPC function rather than two client calls.
         await supabase.from("circles").delete().eq("id", circle.id);
         throw memberError;
       }

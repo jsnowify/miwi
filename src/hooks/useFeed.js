@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
+import { safeImageExtension } from "../lib/extensionHelper";
 
 export function useFeed() {
   const { user } = useAuth();
@@ -61,12 +62,18 @@ export function useCreatePost() {
       let media_attachment = null;
 
       if (mediaFile) {
-        const ext = mediaFile.name.split(".").pop().toLowerCase();
+        // Derive the extension from the actual MIME type rather than
+        // trusting file.name — an attacker-controlled filename shouldn't
+        // end up directly inside a storage path.
+        const ext = safeImageExtension(mediaFile);
         const filePath = `${user.id}/${Date.now()}.${ext}`;
 
         const { error: uploadError } = await supabase.storage
           .from("post_media")
-          .upload(filePath, mediaFile, { upsert: false });
+          .upload(filePath, mediaFile, {
+            upsert: false,
+            contentType: mediaFile.type,
+          });
 
         if (uploadError) throw uploadError;
 

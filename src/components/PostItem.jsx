@@ -7,7 +7,13 @@
 //
 // showAuthor=true  -> Feed usage: avatar/username/circle name in the header
 // showAuthor=false -> Profile usage: just the mood icon, no author row
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "../context/AuthContext";
+import { api } from "../lib/api";
+import Sheet from "./Sheet";
+import { MOODS, REACTIONS } from '../../shared/moods';
 import LyricsSync from "./LyricsSync";
 import AudioPlayer from "./AudioPlayer";
 
@@ -96,7 +102,7 @@ function LeadingIcon({ post, showAuthor }) {
         fontFamily: "'DM Serif Display', Georgia, serif",
       }}
     >
-      {initial}
+      {author?.avatar_emoji || initial}
     </div>
   );
 }
@@ -109,24 +115,16 @@ export default function PostItem({
 }) {
   const audioRef = useRef(null);
 
-  const reactionMap = (post.reactions ?? []).reduce((acc, r) => {
-    acc[r.reaction] = (acc[r.reaction] ?? 0) + 1;
-    return acc;
-  }, {});
-  const reactions = Object.entries(reactionMap).map(([emoji, count]) => ({
-    emoji,
-    count,
-  }));
-
+  const { user } = useAuth(), cache = useQueryClient();
+  const [editing, setEditing] = useState(false), [caption, setCaption] = useState(post.caption || ''), [moodLabel, setMoodLabel] = useState(post.mood_label);
   const circleName = post.circles?.name || post.circle?.name;
-
+  const action = useMutation({ mutationFn: ({ method, path, body }) => api(path, { method, body }), onSuccess: () => {
+    for (const key of ['feed', 'post', 'stories', 'notifications', 'profile', 'memories']) cache.invalidateQueries({ queryKey: [key] });
+    setEditing(false);
+  } });
   function handleReact(emoji) {
-    if (onReact) {
-      onReact(emoji);
-    } else {
-      // TODO: wire up a real reaction-toggle mutation.
-      console.log(`Reacted with ${emoji} to post ${post.id}`);
-    }
+    if (onReact) onReact(emoji);
+    else action.mutate({ method: 'PUT', path: `/posts/${post.id}/reaction`, body: { reaction: post.my_reaction === emoji ? null : emoji } });
   }
 
   return (
@@ -157,16 +155,13 @@ export default function PostItem({
           {showAuthor && (
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontWeight: 600, fontSize: 14, color: "#1C1410" }}>
-                {post.author?.username ??
-                  post.author?.display_name ??
+                {post.author?.display_name ??
+                  post.author?.username ??
                   "someone"}
               </span>
               {circleName && (
                 <>
-                  <i
-                    className="ti ti-chevron-right"
-                    style={{ fontSize: 14, color: "#8A7060" }}
-                  />
+                  <span aria-hidden="true" style={{ color: "#8A7060" }}>/</span>
                   <span
                     style={{ fontSize: 14, fontWeight: 400, color: "#8A7060" }}
                   >
@@ -276,6 +271,7 @@ export default function PostItem({
                   </div>
 
                   <AudioPlayer
+                    key={post.media_attachment.preview_url}
                     ref={audioRef}
                     src={post.media_attachment.preview_url}
                     clipStart={post.media_attachment.clip_start}
@@ -290,57 +286,16 @@ export default function PostItem({
             </div>
           )}
 
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            marginTop: 12,
-            flexWrap: "wrap",
-            alignItems: "center",
-          }}
-        >
-          {reactions.map((r) => (
-            <button
-              key={r.emoji}
-              onClick={() => handleReact(r.emoji)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-                padding: "4px 12px",
-                borderRadius: 999,
-                border: "none",
-                background: "#F5EDE3",
-                color: "#8A7060",
-                cursor: "pointer",
-                fontSize: 13,
-              }}
-            >
-              {r.emoji} <span style={{ fontSize: 12 }}>{r.count}</span>
-            </button>
-          ))}
-          <button
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: "50%",
-              border: "none",
-              background: "transparent",
-              color: "#B09A8A",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "#8A7060")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "#B09A8A")}
-          >
-            <i
-              className="ti ti-message-circle"
-              style={{ fontSize: 24, strokeWidth: 2.5 }}
-            />
-          </button>
+        <div className="miwi-reactions">
+          {post.author_id !== user.id && Object.entries(REACTIONS).map(([emoji,label]) => <button className="miwi-secondary" key={emoji} aria-label={label} title={label} aria-pressed={post.my_reaction === emoji} disabled={action.isPending} onClick={() => handleReact(emoji)}>{emoji}</button>)}
+          <Link to={`/posts/${post.id}`}>View check-in</Link>
+          {post.author_id === user.id && <><button className="miwi-secondary" disabled={action.isPending} onClick={() => setEditing(true)}>Edit</button><button className="miwi-secondary" disabled={action.isPending} onClick={() => { if (window.confirm('Delete this check-in?')) action.mutate({ method: 'DELETE', path: `/posts/${post.id}` }); }}>Delete</button></>}
         </div>
+        {post.author_id === user.id && !!post.reactions?.length && <details><summary>Kind words from your people</summary>{post.reactions.map(r => <p key={r.user_id}>{r.reaction} {r.profile?.display_name || 'A friend'}</p>)}</details>}
+        <small className="miwi-muted">{post.scope === 'close_friends' ? 'Close friends' : post.scope === 'one_person' ? 'Just one person' : 'Whole circle'} · <time dateTime={post.created_at}>{new Date(post.created_at).toLocaleString()}</time></small>
+        <p role="alert">{action.error?.message}</p>
+        {editing && <Sheet title="Edit your check-in" description="Your original audience stays the same." onClose={() => setEditing(false)}><form className="miwi-form" onSubmit={e => { e.preventDefault(); action.mutate({ method: 'PATCH', path: `/posts/${post.id}`, body: { caption, moodLabel } }); }}><label>Mood<select value={moodLabel} onChange={e => setMoodLabel(e.target.value)}>{Object.entries(MOODS).map(([label,emoji]) => <option key={label} value={label}>{emoji} {label}</option>)}</select></label><label>Your words<textarea value={caption} onChange={e => setCaption(e.target.value)} rows={3} /></label><small>{Array.from(caption).length}/280</small><button disabled={action.isPending || Array.from(caption).length > 280}>Save changes</button><p role="alert">{action.error?.message}</p></form></Sheet>}
+
       </div>
     </div>
   );

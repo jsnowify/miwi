@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "strict": false,
+    "noEmit": true,
+    "module": "NodeNext",
+    "target": "ES2023",
+    "skipLibCheck": true,
+    "types": ["node"]
+  },
+  "include": ["server/**/*.js", "shared/**/*.js", "scripts/import-legacy.js"]
+}

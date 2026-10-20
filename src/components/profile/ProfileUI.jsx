@@ -73,7 +73,7 @@ export function CircleChip({ circle, idx }) {
 
   return (
     <div
-      onClick={() => navigate(`/circles/${circle.id}`)}
+      onClick={() => navigate(`/circles?circle=${circle.id}`)}
       className="flex items-center gap-3 p-3.5 rounded-2xl cursor-pointer hover:brightness-95 transition"
       style={{ background: bg }}
     >

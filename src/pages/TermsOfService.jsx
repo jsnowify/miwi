@@ -25,7 +25,7 @@ const sections = [
     content: [
       {
         heading: "Private sharing with people you trust",
-        body: "Miwi is designed for small, close circles — not broadcasting to strangers. Circles are invite-only and capped at 10 people.",
+        body: "Miwi is designed for small, close circles of friends. Circles are private and invite-only.",
       },
       {
         heading: "Honest, authentic check-ins",
@@ -77,7 +77,7 @@ const sections = [
       },
       {
         heading: "Content you can delete",
-        body: "You can delete any of your posts at any time. Once deleted, it's removed from the feed immediately. Miwi Memories that have already been generated may retain a reference to that post for up to 30 days.",
+        body: "You can delete your posts while you remain a member of their circle. Deleted posts immediately become unavailable in feeds and post detail. Monthly reflections are refreshed from currently accessible posts.",
       },
       {
         heading: "Content moderation",
@@ -91,7 +91,7 @@ const sections = [
     content: [
       {
         heading: "Creating a circle",
-        body: "When you create a circle, you're responsible for managing it. You can invite up to 10 members, remove people, or delete the circle entirely.",
+        body: "Circle owners and administrators manage invitations, settings and membership. Owners can transfer ownership to another member.",
       },
       {
         heading: "Joining a circle",
@@ -99,7 +99,7 @@ const sections = [
       },
       {
         heading: "Leaving a circle",
-        body: "You can leave any circle at any time from Circle Settings. Your past posts in that circle will remain visible to remaining members unless you delete them manually.",
+        body: "Members can leave from Circle Settings. Owners must transfer ownership first. Leaving ends your access to the circle, including your past posts. Delete any posts you wish to remove before leaving.",
       },
       {
         heading: "Invite responsibility",
@@ -109,23 +109,23 @@ const sections = [
   },
   {
     emoji: "🔥",
-    title: "Miwi Plus (paid features)",
+    title: "Paid features",
     content: [
       {
         heading: "What's included",
-        body: "Miwi Plus includes custom mood tags, themed circle backgrounds, extended Memories archive, and longer post history. Features may change over time.",
+        body: "This version does not offer a Miwi Plus subscription or paid features.",
       },
       {
         heading: "Billing",
-        body: "Miwi Plus is billed monthly or annually. You'll be charged on the day you subscribe and on each renewal date. Prices are shown before you confirm.",
+        body: "There is no billing or checkout flow in this version.",
       },
       {
         heading: "Cancellation",
-        body: "You can cancel Miwi Plus at any time. Your Plus features stay active until the end of your current billing period. We don't offer prorated refunds for partial months.",
+        body: "There are no active subscriptions to cancel through this app.",
       },
       {
         heading: "Refunds",
-        body: "If you were charged in error or experienced a significant technical issue, contact support@miwi.app and we'll sort it out fairly.",
+        body: "Contact the operator of your Miwi instance with any billing questions outside this app.",
       },
     ],
   },
@@ -161,7 +161,7 @@ const sections = [
       },
       {
         heading: "You can leave anytime",
-        body: "You can delete your Miwi account at any time from Settings. See our Privacy Policy for what happens to your data after deletion.",
+        body: "You can log out at any time. Contact the operator of your Miwi instance to arrange account deletion; self-service account deletion is not available in this version.",
       },
     ],
   },
@@ -176,7 +176,7 @@ export default function TermsOfService() {
       style={{
         minHeight: "100vh",
         background: "#FDF6F0",
-        fontFamily: "'Inter', system-ui, sans-serif",
+        fontFamily: "'Inter Variable', system-ui, sans-serif",
         color: "#3B2A20",
       }}
     >

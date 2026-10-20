@@ -1,11 +1,18 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from 'react-router-dom';
+import { useConversations } from '../hooks/useMessages';
+import ComposeSheet from '../components/ComposeSheet';
 import Navbar from "../components/Navbar";
 import MessagesPanel from "../components/MessagesPanel";
 import ChatView from "../components/ChatView";
 
 export default function Messages() {
   const [activeTab, setActiveTab] = useState("messages");
-  const [selected, setSelected] = useState(null);
+  const [params, setParams] = useSearchParams();
+  const conversations = useConversations();
+  const selected = conversations.data?.find(c => c.id === params.get('conversation'));
+  function setSelected(item) { setParams(item ? {conversation:item.id} : {}); }
+  const [composing, setComposing] = useState(false);
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" ? window.innerWidth < 768 : false,
   );
@@ -21,14 +28,6 @@ export default function Messages() {
 
   return (
     <>
-      <link
-        href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600&display=swap"
-        rel="stylesheet"
-      />
-      <link
-        rel="stylesheet"
-        href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css"
-      />
 
       <div
         style={{ minHeight: "100vh", display: "flex", background: "#F9F4EF" }}
@@ -36,7 +35,7 @@ export default function Messages() {
         <Navbar
           active={activeTab}
           setActive={setActiveTab}
-          onCompose={() => {}}
+          onCompose={() => setComposing(true)}
         />
 
         <div
@@ -80,6 +79,7 @@ export default function Messages() {
           {/* Chat panel or desktop empty state */}
           {selected ? (
             <ChatView
+              key={selected.id}
               contact={selected}
               isMobile={isMobile}
               onBack={() => setSelected(null)}
@@ -131,6 +131,7 @@ export default function Messages() {
           )}
         </div>
       </div>
+      {composing && <ComposeSheet onClose={() => setComposing(false)} />}
     </>
   );
 }

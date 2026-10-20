@@ -320,7 +320,7 @@ function SidebarAvatar({ onClick }) {
             fontFamily: "'DM Serif Display', Georgia, serif",
           }}
         >
-          {initial}
+          {profile?.avatar_emoji || initial}
         </div>
       )}
     </button>
@@ -329,7 +329,7 @@ function SidebarAvatar({ onClick }) {
 
 /* ─── Mobile bottom nav ──────────────────────────────────────── */
 
-function MobileNav({ active, setActive, onCompose, navigate, onSettings }) {
+function MobileNav({ active, setActive, onCompose, navigate }) {
   return (
     <nav
       style={{
@@ -481,6 +481,17 @@ function DesktopSidebar({
           label="Circles"
         >
           <CirclesIcon active={active === "circles"} />
+        </NavBtn>
+
+        <NavBtn
+          active={active === "messages"}
+          onClick={() => {
+            setActive("messages");
+            navigate("/messages");
+          }}
+          label="Messages"
+        >
+          <MessageIcon active={active === "messages"} />
         </NavBtn>
 
         <ComposeBtn onClick={onCompose} />

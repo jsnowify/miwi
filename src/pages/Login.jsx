@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { authClient, requestReset } from "../lib/auth";
 
 const EyeIcon = () => (
   <svg
@@ -64,7 +64,7 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    const { error } = await supabase.auth.signInWithPassword({
+    const { error } = await authClient.signIn.email({
       email,
       password,
     });
@@ -76,19 +76,10 @@ export default function Login() {
     }
   }
 
-  async function handleGoogle() {
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/feed` },
-    });
-  }
+
 
   return (
     <>
-      <link
-        href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600&display=swap"
-        rel="stylesheet"
-      />
       <div
         className="min-h-screen flex flex-col items-center justify-between px-6"
         style={{ background: "#F9F4EF", color: "#1C1410" }}
@@ -122,25 +113,7 @@ export default function Login() {
 
           <div className="flex flex-col gap-3 w-full">
             {/* Google */}
-            <button
-              onClick={handleGoogle}
-              className="w-full py-3.5 rounded-2xl font-medium text-sm flex items-center justify-center gap-2.5 transition-transform active:scale-[0.98]"
-              style={{
-                background: "#fff",
-                color: "#1C1410",
-                border: "1.5px solid #E8D5C4",
-                cursor: "pointer",
-                boxShadow: "0 1px 4px rgba(140,90,60,0.08)",
-              }}
-            >
-              <img
-                src="https://www.svgrepo.com/show/475656/google-color.svg"
-                width={18}
-                height={18}
-                alt="Google"
-              />
-              Continue with Google
-            </button>
+
 
             <div className="flex items-center gap-3">
               <div className="flex-1 h-px" style={{ background: "#EDE3DA" }} />
@@ -231,11 +204,11 @@ export default function Login() {
                     setError("Enter your email above first.");
                     return;
                   }
-                  const { error } = await supabase.auth.resetPasswordForEmail(
+                  const { error } = await requestReset(
                     email,
                     { redirectTo: `${window.location.origin}/reset-password` },
                   );
-                  if (!error) setError("Check your inbox for a reset link.");
+                  setError(error ? error.message : "If an account exists, a reset link will arrive shortly.");
                 }}
               >
                 Forgot password?

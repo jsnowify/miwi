@@ -1,13 +1,9 @@
 export default function WhatIsMiwi() {
   return (
     <>
-      <link
-        href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600&display=swap"
-        rel="stylesheet"
-      />
       <div
         style={{
-          fontFamily: "'Inter', sans-serif",
+          fontFamily: "'Inter Variable', sans-serif",
           background: "#F9F4EF",
           color: "#1C1410",
           minHeight: "100vh",

@@ -7,19 +7,23 @@ const sections = [
     content: [
       {
         heading: "Account information",
-        body: "When you sign up, we collect your name, email address, and a profile photo if you choose to upload one. That's it — no phone number required.",
+        body: "Your account stores your name, email address, a hashed password and your selected profile avatar. No phone number is required.",
       },
       {
         heading: "Mood posts and reactions",
         body: "The posts you share, the mood tags you pick, and the reactions you send are stored so your circle can see them. Posts shared to 'just one person' are only visible to that person and you.",
       },
       {
+        heading: "Messages",
+        body: "Direct and circle messages are stored to preserve your conversations. Direct chats are limited to the two participants while they remain members of the relevant circle; circle chats are visible to current circle members. Leaving or removal ends your access. Messages are not end-to-end encrypted.",
+      },
+      {
         heading: "Usage data",
-        body: "We collect basic analytics like which features you use and how often you open the app. This helps us improve Miwi. We don't track you across other apps or websites.",
+        body: "This version does not include an analytics service or advertising trackers.",
       },
       {
         heading: "Device information",
-        body: "We collect your device type and operating system version to keep the app running smoothly. We don't collect your precise location.",
+        body: "Session and security controls may process your IP address and browser information. Your chosen timezone is stored for mood history and monthly reflections. Precise location is not requested.",
       },
     ],
   },
@@ -33,7 +37,7 @@ const sections = [
       },
       {
         heading: "To improve the app",
-        body: "Aggregated, anonymized usage data helps us understand what's working and what isn't. We never sell this data or share it with advertisers.",
+        body: "Your check-ins support your feed, private mood history and monthly reflections. Reactions do not have public totals.",
       },
       {
         heading: "To keep things safe",
@@ -51,7 +55,7 @@ const sections = [
       },
       {
         heading: "Service providers",
-        body: "We work with a small number of trusted companies to host the app and send notifications (like push notification services). They process data on our behalf and are contractually required to keep it confidential.",
+        body: "The app uses MongoDB for persistent data. Password reset emails use the email provider configured by the app operator. Browser push and daily reminders are not enabled in this version.",
       },
       {
         heading: "Nobody else",
@@ -65,7 +69,7 @@ const sections = [
     content: [
       {
         heading: "Delete your account",
-        body: "You can delete your Miwi account at any time from Settings. When you do, your posts, reactions, and profile information are permanently removed within 30 days.",
+        body: "Self-service account deletion is not available in this version. Contact the operator of your Miwi instance to arrange an account deletion.",
       },
       {
         heading: "Edit or delete posts",
@@ -73,11 +77,11 @@ const sections = [
       },
       {
         heading: "Notification controls",
-        body: "You can turn off the daily Vibe Check nudge and other notifications anytime in your device settings or within Miwi.",
+        body: "Use Settings to control reaction and circle activity notifications. Daily reminders are not enabled.",
       },
       {
         heading: "Data export",
-        body: "You can request a copy of your Miwi data at any time by emailing us at privacy@miwi.app.",
+        body: "Contact the operator of your Miwi instance to request an export. This version does not include a self-service export page.",
       },
     ],
   },
@@ -87,11 +91,11 @@ const sections = [
     content: [
       {
         heading: "Active accounts",
-        body: "We keep your posts and account data for as long as you're using Miwi. Monthly Memories are stored for 12 months.",
+        body: "Posts, account records and monthly reflections remain stored until the operator applies a retention or deletion procedure. Deleted posts immediately stop appearing through the app.",
       },
       {
         heading: "Deleted accounts",
-        body: "After you delete your account, we remove your personal data within 30 days. Some anonymized, aggregated data (like total mood tag counts) may be retained for analytics purposes.",
+        body: "The operator must specify retention and backup deletion timelines for their deployment. This version does not automatically purge accounts or backups on a schedule.",
       },
     ],
   },
@@ -101,7 +105,7 @@ const sections = [
     content: [
       {
         heading: "Encryption",
-        body: "All data is encrypted in transit (TLS) and at rest. Passwords are hashed — we never store them in plain text.",
+        body: "Passwords are hashed by Better Auth. Production deployments must use HTTPS and a securely configured MongoDB Atlas connection. The app checks circle membership and post audience on the server.",
       },
       {
         heading: "Access controls",
@@ -144,7 +148,7 @@ export default function LegalPolicy() {
       style={{
         minHeight: "100vh",
         background: "#FDF6F0",
-        fontFamily: "'Inter', system-ui, sans-serif",
+        fontFamily: "'Inter Variable', system-ui, sans-serif",
         color: "#3B2A20",
       }}
     >

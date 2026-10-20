@@ -5,6 +5,9 @@ import PublicRoute from "./components/PublicRoute";
 import LandingPage from "./pages/LandingPage.jsx";
 import Login from "./pages/Login.jsx";
 import Signup from "./pages/Signup.jsx";
+import PostDetail from "./pages/PostDetail";
+import Settings from "./pages/Settings";
+import Memories from "./pages/Memories";
 import Feed from "./pages/Feed.jsx";
 import Circles from "./pages/Circles.jsx";
 import Messages from "./pages/Messages.jsx";
@@ -85,6 +88,11 @@ export default function App() {
             }
           />
 
+          <Route path="/posts/:id" element={<ProtectedRoute><PostDetail /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+          <Route path="/memories" element={<ProtectedRoute><Memories /></ProtectedRoute>} />
+          <Route path="/onboarding" element={<ProtectedRoute><Circles /></ProtectedRoute>} />
+          <Route path="/invitations" element={<ProtectedRoute><Circles /></ProtectedRoute>} />
           <Route path="/privacy" element={<LegalPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/miwi" element={<Miwi />} />

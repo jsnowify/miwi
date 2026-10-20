@@ -1,44 +1,38 @@
 import { useState, useRef, useEffect } from "react";
+import { useChatMessages, useSendChatMessage, useMarkChatRead } from '../hooks/useMessages';
+import { useAuth } from '../context/AuthContext';
+import { useCircles } from '../hooks/useCircles';
 
-// NOTE: there's no `messages` table/hook wired up yet in this codebase, so
-// this keeps sent messages in local component state — good enough to make
-// the UI actually functional. Once a real messages table + useMessages()
-// hook exists, swap the local `messages` state + `sendLocalMessage` for
-// that hook's data + mutation and the rest of this component (rendering,
-// scroll-to-bottom, Enter-to-send) doesn't need to change.
 export default function ChatView({ contact, onBack, isMobile }) {
-  const [messages, setMessages] = useState([]);
+  const { user } = useAuth();
+  const query = useChatMessages(contact.id), send = useSendChatMessage(contact.id);
+  const { mutate: markRead } = useMarkChatRead(contact.id);
+  const { data: circles = [] } = useCircles();
+  const roster = circles.find(c => c.id === contact.circle_id)?.circle_members || [];
+  const records = query.error ? [] : query.data?.pages.flatMap(page => page.messages) || [];
+  const messages = [...new Map(records.map(message => [message.id, message])).values()].sort((a,b) => a.sequence - b.sequence).map(message => ({ ...message,
+    from: message.author_id === user.id ? 'me' : 'them',
+    authorName: message.author_id === user.id ? 'You' : roster.find(m => m.user_id === message.author_id)?.profiles.display_name || 'Former member',
+    time: new Date(message.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+  }));
+  const latestId = records[0]?.id;
+  const latestSequence = query.data?.pages[0]?.messages[0]?.sequence;
+  const pending = useRef(null);
   const [draft, setDraft] = useState("");
   const scrollRef = useRef(null);
 
-  // Reset the thread when switching contacts so messages from a previous
-  // conversation don't bleed into the next one.
-  useEffect(() => {
-    setMessages([]);
-    setDraft("");
-  }, [contact?.id]);
+  // The parent keys this component by conversation ID to isolate drafts and mutations.
+  useEffect(() => { if (latestId && !query.error) markRead(latestId); }, [latestId, markRead, query.error]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
-  }, [messages]);
+  }, [latestSequence]);
 
   function handleSend() {
     const text = draft.trim();
-    if (!text) return;
-
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: `${Date.now()}-${Math.random()}`,
-        from: "me",
-        text,
-        time: new Date().toLocaleTimeString([], {
-          hour: "numeric",
-          minute: "2-digit",
-        }),
-      },
-    ]);
-    setDraft("");
+    if (!text || send.isPending || query.error || Array.from(text).length > 2000) return;
+    if (pending.current?.text !== text) pending.current = { text, clientId: crypto.randomUUID() };
+    send.mutate(pending.current, { onSuccess: () => { setDraft(''); pending.current = null; } });
   }
 
   function handleKeyDown(e) {
@@ -86,6 +80,7 @@ export default function ChatView({ contact, onBack, isMobile }) {
       >
         {isMobile && (
           <button
+            aria-label="Back to conversations"
             onClick={onBack}
             style={{
               width: 34,
@@ -145,35 +140,11 @@ export default function ChatView({ contact, onBack, isMobile }) {
             {contact.name}
           </div>
           <div style={{ fontSize: 11, color: "#8A7060" }}>
-            {contact.rounded ? "Group · tap to see members" : "Active recently"}
+            {contact.rounded ? 'Circle conversation' : 'Private conversation'} · {contact.circle_name}
           </div>
         </div>
 
-        <button
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: "50%",
-            border: "none",
-            background: "transparent",
-            color: "#8A7060",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transition: "background 0.15s",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "#F0E5DB")}
-          onMouseLeave={(e) =>
-            (e.currentTarget.style.background = "transparent")
-          }
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <circle cx="5" cy="12" r="1.5" fill="#8A7060" />
-            <circle cx="12" cy="12" r="1.5" fill="#8A7060" />
-            <circle cx="19" cy="12" r="1.5" fill="#8A7060" />
-          </svg>
-        </button>
+
       </div>
 
       {/* Messages area */}
@@ -188,7 +159,8 @@ export default function ChatView({ contact, onBack, isMobile }) {
           gap: 8,
         }}
       >
-        {messages.length === 0 ? (
+        {query.hasNextPage && !query.error && <button disabled={query.isFetchingNextPage} onClick={() => query.fetchNextPage()} style={{color:'#705B4D',background:'#F0E5DB',padding:10,borderRadius:16}}>Earlier messages</button>}
+        {query.isPending ? <p role="status">Loading messages…</p> : query.error ? <p role="alert">This conversation is unavailable. Your circle access may have changed.</p> : messages.length === 0 ? (
           <div
             style={{
               flex: 1,
@@ -243,9 +215,10 @@ export default function ChatView({ contact, onBack, isMobile }) {
           messages.map((m) => (
             <div
               key={m.id}
+              data-message-id={m.id}
               style={{
                 display: "flex",
-                justifyContent: "flex-end",
+                justifyContent: m.from === 'me' ? "flex-end" : "flex-start",
                 alignItems: "flex-end",
                 gap: 6,
               }}
@@ -258,14 +231,15 @@ export default function ChatView({ contact, onBack, isMobile }) {
                   maxWidth: "72%",
                   padding: "9px 14px",
                   borderRadius: "16px 16px 4px 16px",
-                  background: "#C96A3A",
-                  color: "#F9F4EF",
+                  background: m.from === 'me' ? "#C96A3A" : '#EDE3DA',
+                  color: m.from === 'me' ? "#F9F4EF" : '#40332E',
                   fontSize: 14,
                   lineHeight: 1.5,
                   wordBreak: "break-word",
                 }}
               >
-                {m.text}
+                {contact.rounded && m.from !== 'me' && <strong style={{display:'block',fontSize:11}}>{m.authorName}</strong>}
+                <span style={{whiteSpace:'pre-wrap'}}>{m.text}</span>
               </div>
             </div>
           ))
@@ -273,6 +247,8 @@ export default function ChatView({ contact, onBack, isMobile }) {
       </div>
 
       {/* Input bar */}
+      {send.error && <p role="alert" style={{color:'#9B3428',padding:'8px 16px'}}>{send.error.message} Your draft is still here.</p>}
+      {Array.from(draft.trim()).length > 2000 && <p role="alert" style={{color:'#9B3428',padding:'8px 16px'}}>Messages can have up to 2,000 characters.</p>}
       <div
         style={{
           padding: "12px 16px",
@@ -299,6 +275,9 @@ export default function ChatView({ contact, onBack, isMobile }) {
           }}
         >
           <input
+            aria-label="Message text"
+            disabled={send.isPending || !!query.error || query.isPending}
+            maxLength={4000}
             type="text"
             placeholder={`Message ${contact.name}…`}
             value={draft}
@@ -311,13 +290,14 @@ export default function ChatView({ contact, onBack, isMobile }) {
               fontSize: 14,
               color: "#1C1410",
               outline: "none",
-              fontFamily: "'Inter', sans-serif",
+              fontFamily: "'Inter Variable', sans-serif",
             }}
           />
         </div>
         <button
+          aria-label="Send message"
           onClick={handleSend}
-          disabled={!draft.trim()}
+          disabled={!draft.trim() || send.isPending || !!query.error || query.isPending || Array.from(draft.trim()).length > 2000}
           style={{
             width: 42,
             height: 42,

@@ -59,24 +59,18 @@ const AudioPlayer = forwardRef(function AudioPlayer(
     };
     const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
     const handleEnded = () => setIsPlaying(false);
+    const handleReset = () => { setIsPlaying(false); setCurrentTime(clipStart); setDuration(0); };
 
     audio.addEventListener("loadedmetadata", handleLoadedMetadata);
     audio.addEventListener("timeupdate", handleTimeUpdate);
     audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("emptied", handleReset);
     return () => {
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("emptied", handleReset);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [src]);
-
-  // Reset visual state when the track itself changes (e.g. scrolling to a
-  // different post reusing this component elsewhere).
-  useEffect(() => {
-    setIsPlaying(false);
-    setCurrentTime(clipStart);
-    setDuration(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [src]);
 
@@ -87,8 +81,7 @@ const AudioPlayer = forwardRef(function AudioPlayer(
       audio.pause();
       setIsPlaying(false);
     } else {
-      audio.play().catch(() => {});
-      setIsPlaying(true);
+      audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
     }
   }
 

@@ -1,4 +1,73 @@
-# Miwi — App Concept Document 🌿
+# Miwi — Your circle, your vibes 🌿
+
+Miwi continues the original React/Vite application with a same-origin Node API,
+MongoDB Atlas persistence and Better Auth. Supabase is no longer required at
+runtime. The original product concept is retained below.
+
+## Run locally
+
+Use Node 24 and npm. Install with `npm ci`. Add the variables in
+[.env.example](.env.example) to your existing local `.env`; do not overwrite
+existing secrets. At minimum configure `MONGODB_URI`, `MONGODB_DB`,
+`BETTER_AUTH_SECRET` (at least 32 random characters), and `BETTER_AUTH_URL`.
+Use an Atlas replica set because circle and auth operations use transactions.
+
+```powershell
+npm run dev
+```
+
+Open **http://localhost:5173** (the origin must exactly match
+`BETTER_AUTH_URL`). The UI and API run together in the same Vite process;
+you do not need to start a second server on port 3001.
+Create an account, create a circle, generate an invitation, and share a mood.
+Add `SMTP_URL` and `MAIL_FROM` to enable password resets. Google sign-in and
+push reminders are not configured; the app does not simulate them.
+
+## Build and deploy
+
+```powershell
+npm run build
+npm start
+```
+
+The Node process serves both `dist` and `/api`. Deploy it as a persistent Node
+service or use the provided [Dockerfile](Dockerfile). Set `NODE_ENV=production`,
+the public **HTTPS** `BETTER_AUTH_URL`, MongoDB credentials and the auth secret
+in the hosting environment. Configure Atlas network access for the server and
+use a database user scoped to the Miwi database. Health check: `/api/health`.
+If behind a proxy, set `TRUSTED_PROXY` only to known proxy IPs/CIDRs.
+`vite preview` previews assets only; it does not provide the API.
+
+On Render, the server uses `RENDER_EXTERNAL_URL` when `BETTER_AUTH_URL` is
+omitted. Set an explicit `BETTER_AUTH_URL` when adding a custom domain.
+Production startup rejects an HTTP origin. See [deployment settings](docs/DEPLOYMENT.md).
+
+## Verification
+
+```powershell
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npx playwright install chromium
+npm run test:e2e
+```
+
+Integration and browser tests create isolated local MongoDB replica sets and do
+not use your `.env` or production database. First use downloads a MongoDB test
+binary. Browser tests exercise the production build, so build before running.
+The JavaScript server, authorization policies, shared domain constants and
+importer are checked with TypeScript's `checkJs`; the existing React JSX is
+verified by linting and Vite's production build.
+
+See [the recovery audit](docs/CONTINUATION.md),
+[data and privacy rules](docs/DATA-AND-PRIVACY.md),
+[legacy import instructions](docs/MIGRATION.md), and
+[the implementation report](docs/IMPLEMENTATION.md).
+
+---
+
+# Original app concept
 
 > _A cozy, warm corner of the internet for you and your closest people._
 

@@ -1,5 +1,7 @@
 import { useState, useMemo } from "react";
-import { MOCK_DMS, MOCK_GROUPS } from "./mockMessages";
+import { Link, useNavigate } from 'react-router-dom';
+import Sheet from './Sheet';
+import { useConversations, useStartConversation } from '../hooks/useMessages';
 import { useCircles } from "../hooks/useCircles";
 import { useAuth } from "../context/AuthContext";
 
@@ -9,8 +11,8 @@ import { useAuth } from "../context/AuthContext";
 // root width would briefly disagree and show as a margin/gap glitch
 // during the expand/collapse transition. Export them so Feed.jsx (or
 // any other consumer) imports instead of re-declaring.
-export const SIDEBAR_EXPANDED_W = 300;
-export const SIDEBAR_COLLAPSED_W = 64;
+const SIDEBAR_EXPANDED_W = 300;
+const SIDEBAR_COLLAPSED_W = 64;
 
 const CONTACT_COLORS = [
   "#C96A3A",
@@ -280,7 +282,7 @@ function SearchBar({ value, onChange }) {
             fontSize: 14,
             color: "#1C1410",
             outline: "none",
-            fontFamily: "'Inter', sans-serif",
+            fontFamily: "'Inter Variable', sans-serif",
           }}
         />
         {value && (
@@ -530,160 +532,14 @@ function EmptySearch({ query }) {
    onClick={() => {}} — clicking "new message" did nothing at all. This
    opens a picker of people from your circles (deduped, excluding
    yourself) and hands the chosen person back as a conversation. */
-function NewMessageModal({ onClose, onPick }) {
+function NewMessageModal({ onClose, onPick, pending, error }) {
   const { user } = useAuth();
-  const { data: circles = [], isLoading } = useCircles();
-
-  const contacts = useMemo(() => {
-    const seen = new Map();
-    for (const circle of circles) {
-      for (const cm of circle.circle_members ?? []) {
-        const profile = cm.profiles;
-        if (!profile || profile.id === user?.id || seen.has(profile.id)) {
-          continue;
-        }
-        seen.set(profile.id, profile);
-      }
-    }
-    return Array.from(seen.values());
-  }, [circles, user?.id]);
-
-  return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 110,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "rgba(0,0,0,0.2)",
-        backdropFilter: "blur(4px)",
-        padding: 16,
-      }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: 360,
-          background: "#FDFAF7",
-          borderRadius: 20,
-          border: "1px solid #EDE3DA",
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-          maxHeight: "70vh",
-        }}
-      >
-        <div
-          style={{
-            padding: "16px 18px",
-            borderBottom: "1px solid #EDE3DA",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexShrink: 0,
-          }}
-        >
-          <span
-            style={{
-              fontFamily: "'DM Serif Display', Georgia, serif",
-              fontSize: 17,
-              color: "#1C1410",
-            }}
-          >
-            New message
-          </span>
-          <button
-            onClick={onClose}
-            style={{
-              border: "none",
-              background: "none",
-              cursor: "pointer",
-              color: "#8A7060",
-              display: "flex",
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M18 6 6 18M6 6l12 12"
-                stroke="#8A7060"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
-        </div>
-        <div style={{ overflowY: "auto", padding: 8 }}>
-          {isLoading ? (
-            <div
-              style={{
-                padding: 24,
-                textAlign: "center",
-                fontSize: 13,
-                color: "#8A7060",
-              }}
-            >
-              loading your circles…
-            </div>
-          ) : contacts.length === 0 ? (
-            <div
-              style={{
-                padding: 24,
-                textAlign: "center",
-                fontSize: 13,
-                color: "#8A7060",
-              }}
-            >
-              join a circle first to message someone
-            </div>
-          ) : (
-            contacts.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => onPick(c)}
-                style={{
-                  width: "100%",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  padding: "10px",
-                  border: "none",
-                  background: "transparent",
-                  cursor: "pointer",
-                  borderRadius: 12,
-                  textAlign: "left",
-                }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.background = "#F5EDE3")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.background = "transparent")
-                }
-              >
-                <Avatar
-                  label={c.display_name?.charAt(0).toUpperCase() ?? "?"}
-                  color={colorForId(c.id)}
-                  size={38}
-                />
-                <div style={{ minWidth: 0 }}>
-                  <div
-                    style={{ fontSize: 14, fontWeight: 600, color: "#1C1410" }}
-                  >
-                    {c.display_name}
-                  </div>
-                  <div style={{ fontSize: 12, color: "#8A7060" }}>
-                    @{c.username}
-                  </div>
-                </div>
-              </button>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
-  );
+  const query = useCircles();
+  const contacts = useMemo(() => (query.data || []).flatMap(circle => circle.circle_members.filter(m => m.user_id !== user.id).map(m => ({ ...m.profiles, circle_id: circle.id, circle_name: circle.name }))), [query.data, user.id]);
+  return <Sheet title="New message" description="Choose a friend and the circle you share." onClose={onClose}>
+    {query.isPending ? <p role="status">Loading your people...</p> : query.error ? <p role="alert">{query.error.message}</p> : !contacts.length ? <p>Join a circle with a friend to start a conversation. <Link to="/circles" onClick={onClose}>Your circles</Link></p> : <div style={{display:'grid',gap:8}}>{contacts.map(c => <button key={c.circle_id + c.id} disabled={pending} onClick={() => onPick(c)} style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:'#F0E5DB',color:'#40332E'}}><Avatar label={c.avatar_emoji || c.display_name[0]} color={colorForId(c.id)} size={38} /><span>{c.display_name}<small style={{display:'block'}}>In {c.circle_name}</small></span></button>)}</div>}
+    <p role="alert">{error?.message}</p>
+  </Sheet>;
 }
 
 /* ── Main export ── */
@@ -699,23 +555,14 @@ export default function MessagesPanel({
   const [sidebarSelected, setSidebarSelected] = useState(null);
   const [showNewMessage, setShowNewMessage] = useState(false);
 
-  const dmUnread = MOCK_DMS.reduce((s, d) => s + (d.unread > 0 ? 1 : 0), 0);
-  const groupUnread = MOCK_GROUPS.reduce(
-    (s, g) => s + (g.unread > 0 ? 1 : 0),
-    0,
-  );
-
-  const filteredDMs = MOCK_DMS.filter(
-    (d) =>
-      d.name.toLowerCase().includes(search.toLowerCase()) ||
-      d.preview.toLowerCase().includes(search.toLowerCase()),
-  );
-  const filteredGroups = MOCK_GROUPS.filter(
-    (g) =>
-      g.name.toLowerCase().includes(search.toLowerCase()) ||
-      g.preview.toLowerCase().includes(search.toLowerCase()),
-  );
-
+  const conversations = useConversations(), circles = useCircles(), start = useStartConversation();
+  const navigate = useNavigate();
+  const direct = (conversations.data || []).filter(c => c.kind === 'direct');
+  const groups = (circles.data || []).map(circle => (conversations.data || []).find(c => c.kind === 'circle' && c.circle_id === circle.id) || ({ id: 'circle-' + circle.id, kind: 'circle', circle_id: circle.id, circle_name: circle.name, name: circle.name, avatar: circle.cover_color, avatarColor: colorForId(circle.id), preview: 'No messages yet', time: '', unread: 0, rounded: true, virtual: true }));
+  const dmUnread = direct.reduce((n,c) => n + (c.unread > 0 ? 1 : 0), 0);
+  const groupUnread = groups.reduce((n,c) => n + (c.unread > 0 ? 1 : 0), 0);
+  const filteredDMs = direct.filter(c => (c.name + ' ' + c.circle_name + ' ' + c.preview).toLowerCase().includes(search.toLowerCase()));
+  const filteredGroups = groups.filter(c => (c.name + ' ' + c.preview).toLowerCase().includes(search.toLowerCase()));
   const currentList = tab === "direct" ? filteredDMs : filteredGroups;
   const isGroup = tab === "groups";
 
@@ -725,33 +572,21 @@ export default function MessagesPanel({
     onExpandChange?.(next); // notify Feed so it can resize the sidebar slot
   }
 
+  function showConversation(item) {
+    if (variant === 'page') onSelect?.(item);
+    else { setSidebarSelected(item.id); navigate('/messages?conversation=' + item.id); }
+  }
   function handleSelect(item) {
-    if (variant === "page") {
-      onSelect?.({ ...item, rounded: isGroup });
-    } else {
-      setSidebarSelected(item.id === sidebarSelected ? null : item.id);
-    }
+    if (item.virtual) start.mutate({kind:'circle',circleId:item.circle_id}, {onSuccess:showConversation});
+    else showConversation(item);
   }
-
-  // Person picked from the New Message modal -> normalize into the same
-  // shape ConvoRow/ChatView expect, then route it through the normal
-  // selection path (same as clicking an existing conversation).
-  function handleNewMessagePick(profile) {
-    const contact = {
-      id: `new-${profile.id}`,
-      name: profile.display_name,
-      avatar: profile.display_name?.charAt(0).toUpperCase() ?? "?",
-      avatarColor: colorForId(profile.id),
-      preview: "",
-      time: "now",
-      unread: 0,
-    };
-    setShowNewMessage(false);
-    handleSelect(contact);
+  function handleNewMessagePick(person) {
+    start.mutate({kind:'direct',circleId:person.circle_id,recipientId:person.id}, {onSuccess: item => {setShowNewMessage(false);showConversation(item);}});
   }
-
   const body = (
     <>
+      <p role="alert" style={{padding:'0 20px',color:'#9B3428'}}>{conversations.error?.message || circles.error?.message || start.error?.message}</p>
+      {(conversations.isPending || circles.isPending) && <p role="status" style={{padding:20}}>Loading conversations...</p>}
       <SearchBar value={search} onChange={setSearch} />
       <Tabs
         active={tab}
@@ -761,7 +596,7 @@ export default function MessagesPanel({
       />
       <div>
         {currentList.length === 0 ? (
-          <EmptySearch query={search} />
+          search ? <EmptySearch query={search} /> : <div style={{padding:24,color:'#705B4D',lineHeight:1.7}}>Your conversations will appear here. Use New message to reach someone in your circles.</div>
         ) : (
           currentList.map((item) => (
             <ConvoRow
@@ -819,12 +654,15 @@ export default function MessagesPanel({
           >
             Messages
           </span>
+          <Link to="/circles" style={{marginLeft:"auto",color:"#705B4D",fontSize:12}}>Your circles</Link>
         </div>
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>{body}</div>
         <MobileFAB onClick={() => setShowNewMessage(true)} />
         {showNewMessage && (
           <NewMessageModal
             onClose={() => setShowNewMessage(false)}
+            pending={start.isPending}
+            error={start.error}
             onPick={handleNewMessagePick}
           />
         )}
@@ -911,6 +749,7 @@ export default function MessagesPanel({
           >
             Messages
           </span>
+
         )}
       </div>
 

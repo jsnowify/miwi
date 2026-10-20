@@ -1,18 +1,6 @@
-import { supabase } from "@/lib/supabase";
-import { Button } from "@/components/ui/button";
-
-export function LogoutButton() {
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-  };
-
-  return (
-    <Button
-      onClick={handleLogout}
-      variant="ghost"
-      className="text-xs text-[#8C8481] hover:text-[#E5735B] hover:bg-transparent"
-    >
-      Logout
-    </Button>
-  );
+import { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+export default function LogoutButton() {
+  const { signOut } = useAuth(), [error, setError] = useState('');
+  return <><button onClick={() => signOut().catch(e => setError(e.message))}>Log out</button><p role="alert">{error}</p></>;
 }

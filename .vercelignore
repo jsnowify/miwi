@@ -8,3 +8,6 @@ test-results
 playwright-report
 docs
 *.log
+.vercel
+database-documentation.txt
+data.js

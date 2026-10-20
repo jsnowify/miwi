@@ -42,6 +42,11 @@ On Render, the server uses `RENDER_EXTERNAL_URL` when `BETTER_AUTH_URL` is
 omitted. Set an explicit `BETTER_AUTH_URL` when adding a custom domain.
 Production startup rejects an HTTP origin. See [deployment settings](docs/DEPLOYMENT.md).
 
+For serverless hosting, [vercel.json](vercel.json) serves the frontend from the
+CDN and the existing API through a Node function. MongoDB Atlas keeps sessions,
+messages, posts and media durable. Set the production secrets and exact HTTPS
+auth origin in Vercel; local startup remains `npm run dev`.
+
 ## Verification
 
 ```powershell

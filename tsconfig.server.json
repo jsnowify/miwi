@@ -9,5 +9,5 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["server/**/*.js", "shared/**/*.js", "scripts/import-legacy.js"]
+  "include": ["api/**/*.js", "server/**/*.js", "shared/**/*.js", "scripts/import-legacy.js"]
 }

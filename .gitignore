@@ -31,3 +31,4 @@ database-documentation.txt
 test-results/
 playwright-report/
 coverage/
+.vercel/
